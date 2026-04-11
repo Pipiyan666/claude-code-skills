@@ -36,9 +36,184 @@ ZHIPU_VISION_MODEL = os.getenv("ZHIPU_VISION_MODEL", "glm-4v-flash")
 st.set_page_config(
     page_title="灵感胶囊 · Idea Capsule",
     page_icon="🧠",
-    layout="wide",
-    initial_sidebar_state="expanded",
+    layout="centered",  # iPhone 视图：限制宽度
+    initial_sidebar_state="collapsed",  # 默认收起 sidebar，模拟移动端
 )
+
+# ---------- iPhone 视图样式（iOS 26 Liquid Glass 风格）----------
+st.markdown("""
+<style>
+    /* iPhone 16 Pro 视图：限制最大宽度 + 圆角 + 阴影 */
+    .main .block-container {
+        max-width: 430px !important;  /* iPhone 16 Pro 宽度 */
+        padding-top: 1rem;
+        padding-bottom: 5rem;
+        margin-left: auto;
+        margin-right: auto;
+    }
+
+    /* iPhone "屏幕"边框效果 */
+    .main {
+        background: linear-gradient(135deg, #fce7f3 0%, #ede9fe 50%, #dbeafe 100%);
+        min-height: 100vh;
+    }
+
+    /* 主内容区：白色卡片背景 + 大圆角 + 阴影（模拟 iPhone 屏幕） */
+    section.main > div.block-container {
+        background: rgba(255, 255, 255, 0.85);
+        backdrop-filter: blur(20px);
+        -webkit-backdrop-filter: blur(20px);
+        border-radius: 32px;
+        box-shadow: 0 20px 60px rgba(0, 0, 0, 0.15),
+                    0 8px 16px rgba(0, 0, 0, 0.08);
+        margin-top: 1rem;
+        margin-bottom: 1rem;
+        border: 1px solid rgba(255, 255, 255, 0.5);
+    }
+
+    /* 标题样式：iOS 大字号风格 */
+    h1 {
+        font-size: 2rem !important;
+        font-weight: 700 !important;
+        background: linear-gradient(135deg, #ec4899, #8b5cf6, #3b82f6);
+        -webkit-background-clip: text;
+        -webkit-text-fill-color: transparent;
+        background-clip: text;
+        letter-spacing: -0.02em;
+    }
+
+    /* Tab 样式：iOS 风格底部 tab 栏 */
+    .stTabs [data-baseweb="tab-list"] {
+        gap: 8px;
+        background: rgba(243, 244, 246, 0.8);
+        padding: 6px;
+        border-radius: 16px;
+        backdrop-filter: blur(10px);
+    }
+
+    .stTabs [data-baseweb="tab"] {
+        background: transparent;
+        border-radius: 12px;
+        padding: 10px 20px;
+        font-weight: 600;
+    }
+
+    .stTabs [data-baseweb="tab"][aria-selected="true"] {
+        background: white;
+        box-shadow: 0 2px 8px rgba(0, 0, 0, 0.1);
+        color: #ec4899;
+    }
+
+    /* 主按钮：iOS 26 Liquid Glass 风格 */
+    .stButton > button[kind="primary"] {
+        background: linear-gradient(135deg, #ec4899, #8b5cf6) !important;
+        color: white !important;
+        border: none !important;
+        border-radius: 14px !important;
+        padding: 14px 24px !important;
+        font-weight: 600 !important;
+        font-size: 1rem !important;
+        box-shadow: 0 4px 12px rgba(236, 72, 153, 0.3) !important;
+        transition: all 0.3s ease !important;
+    }
+
+    .stButton > button[kind="primary"]:hover {
+        transform: translateY(-2px);
+        box-shadow: 0 6px 20px rgba(236, 72, 153, 0.4) !important;
+    }
+
+    /* TextArea: 圆角输入框 */
+    .stTextArea textarea {
+        border-radius: 16px !important;
+        border: 1px solid rgba(0, 0, 0, 0.08) !important;
+        padding: 14px !important;
+        font-size: 0.95rem !important;
+    }
+
+    /* 文件上传区: iPhone 风格虚线框 */
+    [data-testid="stFileUploaderDropzone"] {
+        background: rgba(244, 244, 245, 0.6) !important;
+        border: 2px dashed rgba(139, 92, 246, 0.3) !important;
+        border-radius: 16px !important;
+    }
+
+    /* Radio 按钮：iOS 分段控件风格 */
+    .stRadio > div {
+        background: rgba(243, 244, 246, 0.8);
+        padding: 4px;
+        border-radius: 12px;
+        flex-direction: row !important;
+    }
+
+    .stRadio label {
+        flex: 1;
+        text-align: center;
+        padding: 8px 12px !important;
+        border-radius: 8px;
+        margin: 0 !important;
+        cursor: pointer;
+    }
+
+    /* Expander: 卡片风格 */
+    .streamlit-expanderHeader {
+        background: rgba(255, 255, 255, 0.9) !important;
+        border-radius: 14px !important;
+        border: 1px solid rgba(0, 0, 0, 0.05) !important;
+        padding: 12px 16px !important;
+    }
+
+    /* 隐藏 Streamlit 默认页脚和菜单（更像原生 App）*/
+    #MainMenu {visibility: hidden;}
+    footer {visibility: hidden;}
+    header {visibility: hidden;}
+
+    /* 状态栏（顶部模拟 iPhone 状态栏） */
+    .iphone-statusbar {
+        position: sticky;
+        top: 0;
+        z-index: 100;
+        display: flex;
+        justify-content: space-between;
+        padding: 12px 24px 8px;
+        font-size: 0.85rem;
+        font-weight: 600;
+        color: #1a1a1a;
+        background: rgba(255, 255, 255, 0.7);
+        backdrop-filter: blur(20px);
+        border-radius: 32px 32px 0 0;
+    }
+
+    /* 让 metric 像 iOS 卡片 */
+    [data-testid="stMetric"] {
+        background: rgba(255, 255, 255, 0.7);
+        padding: 12px;
+        border-radius: 14px;
+        box-shadow: 0 2px 8px rgba(0, 0, 0, 0.05);
+    }
+
+    /* 移动端 sidebar：浮层风格（不挤压主内容） */
+    section[data-testid="stSidebar"] {
+        background: rgba(255, 255, 255, 0.95) !important;
+        backdrop-filter: blur(20px);
+    }
+    section[data-testid="stSidebar"] > div {
+        max-width: 320px;
+    }
+
+    /* 让主内容居中显示，sidebar 浮在左边 */
+    @media (min-width: 768px) {
+        .main .block-container {
+            margin-left: auto;
+            margin-right: auto;
+        }
+    }
+</style>
+
+<div class="iphone-statusbar">
+    <span>9:41</span>
+    <span>📶 5G  📶  🔋 100%</span>
+</div>
+""", unsafe_allow_html=True)
 
 
 # ---------- 数据层 ----------
@@ -85,14 +260,21 @@ def call_llm_text(prompt: str, max_tokens: int = 800) -> str:
     return response.choices[0].message.content.strip()
 
 
-def call_llm_vision(prompt: str, image_bytes: bytes, max_tokens: int = 800) -> str:
-    """调用智谱 GLM-4V-Flash（视觉）"""
+def call_llm_vision(prompt: str, image_bytes: bytes, max_tokens: int = 300) -> str:
+    """调用智谱 GLM-4V-Flash（视觉）
+
+    实测限制：
+    - **不接受 `temperature` 参数**（会返回 1210 错误）
+    - **`max_tokens` 上限是 300**（超过会返回 1210 错误）
+
+    因此 GLM-4V 在我们的架构里只用于 OCR + 简单视觉描述，
+    完整的结构化分析交给 GLM-4-Flash 文本模型（max_tokens 大）。
+    """
     client = get_client()
     img_b64 = base64.b64encode(image_bytes).decode()
     response = client.chat.completions.create(
         model=ZHIPU_VISION_MODEL,
-        max_tokens=max_tokens,
-        temperature=0.3,
+        max_tokens=min(max_tokens, 300),  # 强制不超过 300
         messages=[{
             "role": "user",
             "content": [
@@ -129,9 +311,29 @@ def analyze_one(user_input: str) -> dict:
 
 
 def analyze_image(image_bytes: bytes) -> dict:
-    """单张截图 AI 视觉分析（OCR + 摘要 + 标签 + 关键词 一次完成）"""
-    text = call_llm_vision(PROMPT_ANALYZE_IMAGE, image_bytes, max_tokens=1200)
-    return _parse_json_safe(text)
+    """单张截图 AI 分析 — 两步法（智谱 GLM-4V max_tokens 上限 300）
+
+    Step 1: GLM-4V-Flash 做 OCR 提取截图里的所有文字（max_tokens=300 够用）
+    Step 2: GLM-4-Flash 用 OCR 文字走完整的结构化分析（摘要+标签+洞察）
+
+    这正好是 V2 多 Agent 思想的实例：ScreenshotAgent → ClassifyAgent/SummaryAgent/...
+    """
+    # Step 1: OCR
+    ocr_prompt = "请精确识别这张截图里的所有文字，保持原始格式。直接返回文字，不要任何解释或 markdown 标记。"
+    raw_text = call_llm_vision(ocr_prompt, image_bytes, max_tokens=300)
+
+    # Step 2: 用 OCR 文字走完整的文本分析
+    if not raw_text or raw_text.strip() in ("无文字", "无", "(无)", "（无）", ""):
+        # 截图里没文字（如纯图片）—— 让视觉模型给一句描述当 raw_text
+        desc_prompt = "用一句话（30 字内）描述这张图片的内容主题。"
+        raw_text = call_llm_vision(desc_prompt, image_bytes, max_tokens=300)
+
+    # 走文本分析 pipeline
+    analysis = analyze_one(raw_text)
+
+    # 把 raw_text 也塞进结果里，方便 UI 展示
+    analysis["raw_text"] = raw_text
+    return analysis
 
 
 def cluster_insights(insights: list[dict]) -> dict:

@@ -47,11 +47,11 @@ class ScreenshotAgent(Agent):
         else:
             raise ValueError("ScreenshotAgent 需要 image_path 或 image_bytes")
 
+        # 智谱 GLM-4V-Flash 实测限制：max_tokens 上限 300，不接受 temperature
         img_b64 = base64.b64encode(image_bytes).decode()
         response = self._get_client().chat.completions.create(
             model=config.ZHIPU_VISION_MODEL,
-            max_tokens=1500,
-            temperature=0.1,
+            max_tokens=300,
             messages=[{
                 "role": "user",
                 "content": [

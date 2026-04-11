@@ -79,13 +79,16 @@ def call_llm(prompt: str, max_tokens: int = 800, model: str | None = None) -> st
     return response.choices[0].message.content.strip()
 
 
-def call_llm_vision(prompt: str, image_bytes: bytes, max_tokens: int = 1200) -> str:
-    """调用智谱 GLM-4V-Flash（视觉）"""
+def call_llm_vision(prompt: str, image_bytes: bytes, max_tokens: int = 300) -> str:
+    """调用智谱 GLM-4V-Flash（视觉）
+
+    实测限制：智谱 GLM-4V API 不接受 temperature 参数，max_tokens 上限 300。
+    超过会返回 1210 错误。
+    """
     img_b64 = base64.b64encode(image_bytes).decode()
     response = get_client().chat.completions.create(
         model=config.ZHIPU_VISION_MODEL,
-        max_tokens=max_tokens,
-        temperature=0.3,
+        max_tokens=min(max_tokens, 300),
         messages=[{
             "role": "user",
             "content": [
@@ -132,20 +135,29 @@ def analyze_text(user_input: str) -> Insight:
 
 
 def analyze_image(image_path: str | Path) -> Insight:
-    """分析一张截图 → Insight 对象（OCR + 摘要 + 标签 一次完成）"""
+    """分析一张截图 → Insight 对象（两步法）
+
+    Step 1: GLM-4V-Flash OCR 提取截图文字（max_tokens=300）
+    Step 2: GLM-4-Flash 用 OCR 文字走完整结构化分析
+
+    为什么两步：智谱 GLM-4V max_tokens 上限 300，不够输出完整 JSON，
+    所以视觉模型只做 OCR，文本模型做结构化分析。
+    """
     path = Path(image_path).expanduser().resolve()
     image_bytes = path.read_bytes()
-    text = call_llm_vision(PROMPT_ANALYZE_IMAGE, image_bytes, max_tokens=1200)
-    data = parse_json_safe(text)
-    return Insight(
-        id=f"ins-img-{int(datetime.now().timestamp())}",
-        summary=data.get("summary", ""),
-        tags=data.get("tags", []),
-        keywords=data.get("keywords", []),
-        category=data.get("category", "其他"),
-        insight=data.get("insight", ""),
-        timestamp=datetime.now().isoformat(timespec="seconds"),
-        source="image",
-        raw_text=data.get("raw_text", ""),
-        image_path=str(path),
-    )
+
+    # Step 1: OCR
+    ocr_prompt = "请精确识别这张截图里的所有文字，保持原始格式。直接返回文字，不要任何解释或 markdown 标记。"
+    raw_text = call_llm_vision(ocr_prompt, image_bytes, max_tokens=300)
+
+    if not raw_text or raw_text.strip() in ("无文字", "无", "(无)", "（无）", ""):
+        # 无文字截图：让视觉模型给一句描述
+        desc_prompt = "用一句话（30 字内）描述这张图片的内容主题。"
+        raw_text = call_llm_vision(desc_prompt, image_bytes, max_tokens=300)
+
+    # Step 2: 结构化分析（复用文本分析）
+    ins = analyze_text(raw_text)
+    ins.id = f"ins-img-{int(datetime.now().timestamp())}"
+    ins.source = "image"
+    ins.image_path = str(path)
+    return ins
