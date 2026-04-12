@@ -1,18 +1,10 @@
 import SwiftUI
 import SwiftData
 
-// MARK: - RootView — 自定义 Tab Bar（Editorial 风格）
-//
-// 放弃默认 TabView，自己画一个编辑型底部导航栏。
-// 原因：系统 TabView 太"软件"，我们需要"杂志"的感觉。
-//
-// 灵感：像一本纸质笔记本底部的锚点标签
-
 struct RootView: View {
     @Environment(\.modelContext) private var modelContext
     @State private var capsuleStore: CapsuleStore?
     @State private var selectedTab: Tab = .capture
-    @State private var hasAppeared = false
 
     enum Tab: String, CaseIterable, Identifiable {
         case capture  = "捕获"
@@ -28,45 +20,44 @@ struct RootView: View {
             case .insights: return "compass.drawing"
             }
         }
-
-        var accent: Color {
-            switch self {
-            case .capture:  return Theme.Colors.coral
-            case .library:  return Theme.Colors.ink
-            case .insights: return Theme.Colors.jade
-            }
-        }
     }
 
     var body: some View {
         Group {
             if let store = capsuleStore {
                 ZStack(alignment: .bottom) {
-                    // 主内容区
-                    Group {
-                        switch selectedTab {
-                        case .capture:  CaptureView()
-                        case .library:  InsightListView()
-                        case .insights: InsightsTabView()
-                        }
-                    }
-                    .environment(store)
-                    .transition(.asymmetric(
-                        insertion: .opacity.combined(with: .offset(y: 8)),
-                        removal: .opacity
-                    ))
-                    .id(selectedTab)
+                    // 背景色 — 填满整个屏幕（包括安全区）
+                    Theme.Colors.cream
+                        .ignoresSafeArea()
 
-                    // 自定义底部 Tab Bar
-                    EditorialTabBar(selected: $selectedTab)
-                        .padding(.horizontal, Theme.Spacing.lg)
-                        .padding(.bottom, Theme.Spacing.md)
+                    // 主内容区
+                    VStack(spacing: 0) {
+                        Group {
+                            switch selectedTab {
+                            case .capture:  CaptureView()
+                            case .library:  InsightListView()
+                            case .insights: InsightsTabView()
+                            }
+                        }
+                        .environment(store)
+                        .frame(maxWidth: .infinity, maxHeight: .infinity)
+                    }
+
+                    // 底部 Tab Bar（浮在内容上方）
+                    VStack(spacing: 0) {
+                        Spacer()
+                        EditorialTabBar(selected: $selectedTab)
+                            .padding(.horizontal, 24)
+                            .padding(.bottom, 8)
+                    }
+                    .ignoresSafeArea(.keyboard)
                 }
-                .background(PaperBackground())
+                .preferredColorScheme(.light) // 强制浅色模式（避免 Dark Mode 黑边）
             } else {
-                PaperBackground()
+                Theme.Colors.cream
+                    .ignoresSafeArea()
                     .overlay {
-                        VStack(spacing: Theme.Spacing.lg) {
+                        VStack(spacing: 16) {
                             Text("灵感胶囊")
                                 .font(Theme.Typography.hero)
                                 .foregroundStyle(Theme.Colors.ink)
@@ -79,12 +70,11 @@ struct RootView: View {
                     }
             }
         }
-        .animation(Theme.Motion.standard, value: selectedTab)
     }
 }
 
 
-// MARK: - Editorial 底部导航栏
+// MARK: - Tab Bar
 
 struct EditorialTabBar: View {
     @Binding var selected: RootView.Tab
@@ -93,62 +83,30 @@ struct EditorialTabBar: View {
     var body: some View {
         HStack(spacing: 0) {
             ForEach(RootView.Tab.allCases) { tab in
-                TabButton(
-                    tab: tab,
-                    isSelected: selected == tab,
-                    namespace: ns
-                ) {
-                    withAnimation(Theme.Motion.emphasized) {
+                Button {
+                    withAnimation(.spring(response: 0.4, dampingFraction: 0.8)) {
                         selected = tab
                     }
+                } label: {
+                    VStack(spacing: 4) {
+                        Image(systemName: tab.icon)
+                            .font(.system(size: 18, weight: .medium))
+                        Text(tab.rawValue)
+                            .font(.system(size: 11, weight: .semibold, design: .rounded))
+                    }
+                    .foregroundStyle(selected == tab ? Theme.Colors.coral : Theme.Colors.inkSoft)
+                    .frame(maxWidth: .infinity)
+                    .padding(.vertical, 10)
                 }
             }
         }
-        .padding(.horizontal, Theme.Spacing.sm)
-        .padding(.vertical, Theme.Spacing.sm)
+        .padding(.horizontal, 8)
+        .padding(.vertical, 4)
         .background(
-            RoundedRectangle(cornerRadius: 28)
+            RoundedRectangle(cornerRadius: 20)
                 .fill(Theme.Colors.paper)
-                .overlay(
-                    RoundedRectangle(cornerRadius: 28)
-                        .stroke(Theme.Colors.hairline, lineWidth: 1)
-                )
+                .shadow(color: .black.opacity(0.08), radius: 16, y: 4)
         )
-        .modifier(Theme.Shadows.floating())
-    }
-}
-
-private struct TabButton: View {
-    let tab: RootView.Tab
-    let isSelected: Bool
-    let namespace: Namespace.ID
-    let action: () -> Void
-
-    var body: some View {
-        Button(action: action) {
-            HStack(spacing: 6) {
-                Image(systemName: tab.icon)
-                    .font(.system(size: 16, weight: .medium))
-                if isSelected {
-                    Text(tab.rawValue)
-                        .font(.system(size: 14, weight: .semibold, design: .serif))
-                        .italic()
-                        .transition(.opacity.combined(with: .scale))
-                }
-            }
-            .foregroundStyle(isSelected ? Theme.Colors.cream : Theme.Colors.ink)
-            .padding(.horizontal, isSelected ? 20 : 14)
-            .padding(.vertical, 12)
-            .background {
-                if isSelected {
-                    RoundedRectangle(cornerRadius: 20)
-                        .fill(tab.accent)
-                        .matchedGeometryEffect(id: "tab-background", in: namespace)
-                }
-            }
-            .frame(maxWidth: isSelected ? .infinity : nil)
-        }
-        .buttonStyle(.plain)
     }
 }
 
