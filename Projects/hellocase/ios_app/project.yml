@@ -38,26 +38,7 @@ targets:
       - IdeaCapsule/Resources
     info:
       path: IdeaCapsule/Resources/Info.plist
-      properties:
-        CFBundleDisplayName: 灵感胶囊
-        CFBundleShortVersionString: 1.0.0
-        CFBundleVersion: 1
-        LSRequiresIPhoneOS: true
-        UILaunchScreen: {}
-        UIApplicationSceneManifest:
-          UIApplicationSupportsMultipleScenes: true
-        UIRequiredDeviceCapabilities:
-          - arm64
-        UISupportedInterfaceOrientations:
-          - UIInterfaceOrientationPortrait
-        NSPhotoLibraryUsageDescription: "灵感胶囊需要读取你的相册，自动识别截图并用本地 AI 提取知识。所有数据 100% 在你的 iPhone 上处理，绝不上传云端。"
-        NSCameraUsageDescription: "灵感胶囊需要相机权限，让你直接拍照保存灵感。"
-        NSMicrophoneUsageDescription: "灵感胶囊需要麦克风权限，支持语音输入灵感。"
-        NSSpeechRecognitionUsageDescription: "灵感胶囊需要语音识别权限，用本地 Speech Framework 把语音转成文字。所有处理在设备上完成。"
-      properties:
-        com.apple.security.app-sandbox: true
-        com.apple.security.files.user-selected.read-only: true
-    dependencies: []
+    dependencies:    dependencies: []
     settings:
       base:
         PRODUCT_BUNDLE_IDENTIFIER: com.ideacapsule.app
