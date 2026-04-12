@@ -96,7 +96,7 @@ actor CloudAIService {
         request.httpMethod = "POST"
         request.setValue("Bearer \(apiKey)", forHTTPHeaderField: "Authorization")
         request.setValue("application/json", forHTTPHeaderField: "Content-Type")
-        request.timeoutInterval = 30
+        request.timeoutInterval = 60
         request.httpBody = bodyData
         print("[CloudAI] 请求已发送...")
 
@@ -154,7 +154,7 @@ actor CloudAIService {
         request.httpMethod = "POST"
         request.setValue("Bearer \(apiKey)", forHTTPHeaderField: "Authorization")
         request.setValue("application/json", forHTTPHeaderField: "Content-Type")
-        request.timeoutInterval = 15
+        request.timeoutInterval = 60
         print("[CloudAI] 调用 \(textModel) ...")
 
         // 用 Codable 构建 JSON（避免 [String: Any] 桥接 NSNumber 的 crash）

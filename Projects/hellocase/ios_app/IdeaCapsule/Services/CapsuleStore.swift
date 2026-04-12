@@ -34,8 +34,10 @@ final class CapsuleStore {
     func processImage(_ image: UIImage, asset: PHAsset? = nil) async throws -> Insight {
         print("[Store] >>> processImage START")
 
-        print("[Store] 1. jpegData...")
-        guard let imageData = image.jpegData(compressionQuality: 0.5) else {
+        // 压缩 + resize（iPhone 截图可能很大，缩小加快上传）
+        print("[Store] 1. resize + compress...")
+        let resized = image.resizedForAPI(maxDimension: 1024)
+        guard let imageData = resized.jpegData(compressionQuality: 0.3) else {
             throw NSError(domain: "CapsuleStore", code: -1,
                           userInfo: [NSLocalizedDescriptionKey: "图片转换失败"])
         }
