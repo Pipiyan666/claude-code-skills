@@ -43,6 +43,21 @@ struct CaptureView: View {
                         .transition(.opacity.combined(with: .offset(y: 10)))
                 }
 
+                // 错误信息（不再无限转圈）
+                if let error = viewModel.errorMessage {
+                    HStack(spacing: Theme.Spacing.sm) {
+                        Image(systemName: "exclamationmark.triangle")
+                            .foregroundStyle(Theme.Colors.coral)
+                        Text(error)
+                            .font(Theme.Typography.caption)
+                            .foregroundStyle(Theme.Colors.coral)
+                    }
+                    .padding(Theme.Spacing.md)
+                    .frame(maxWidth: .infinity, alignment: .leading)
+                    .background(Theme.Colors.coral.opacity(0.08))
+                    .clipShape(RoundedRectangle(cornerRadius: 10))
+                }
+
                 if let result = viewModel.lastResult {
                     ResultCard(insight: result)
                         .transition(.asymmetric(

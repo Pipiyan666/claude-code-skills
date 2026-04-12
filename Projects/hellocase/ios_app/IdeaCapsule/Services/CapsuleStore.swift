@@ -40,17 +40,26 @@ final class CapsuleStore {
                           userInfo: [NSLocalizedDescriptionKey: "图片转换失败"])
         }
 
+        // 智能选择：付费模型用一步法，免费模型用两步法
         let analysis: AnalysisResult
-        do {
-            // 优先一步法（GLM-4.1V-Thinking 视觉推理）
-            analysis = try await ModelRouter.shared.analyzeImage(imageData: imageData)
-        } catch {
-            // 降级：先 OCR 再文本分析（两步法）
-            let rawText = try await OCRService.shared.extractText(from: image)
+        let rawText: String
+
+        let isPremium = await CloudAIService.shared.visionModel.contains("thinking")
+        if isPremium {
+            // 一步法（GLM-4.1V-Thinking 链式推理）
+            do {
+                analysis = try await ModelRouter.shared.analyzeImage(imageData: imageData)
+                rawText = analysis.summary
+            } catch {
+                // 降级到两步法
+                rawText = try await OCRService.shared.extractText(from: image)
+                analysis = try await ModelRouter.shared.analyze(rawText: rawText)
+            }
+        } else {
+            // 两步法（免费模型：Vision OCR → 文本分析）
+            rawText = try await OCRService.shared.extractText(from: image)
             analysis = try await ModelRouter.shared.analyze(rawText: rawText)
         }
-
-        let rawText = analysis.summary // 一步法没有 rawText，用 summary 代替
 
         // 持久化
         let insight = Insight(

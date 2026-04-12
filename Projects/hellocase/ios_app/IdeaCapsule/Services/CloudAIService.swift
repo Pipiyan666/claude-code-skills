@@ -14,9 +14,23 @@ actor CloudAIService {
     private var apiKey: String = ""
     private let baseURL = "https://open.bigmodel.cn/api/paas/v4/chat/completions"
 
-    // 双模型分工（2026 最新最强）
-    private let textModel = "glm-5.1"                         // 文本分析 + 聚类 + 调研
-    private let visionModel = "glm-4.1v-thinking-flashx"      // 截图视觉理解（链式推理）
+    // 模型配置（可切换免费/付费）
+    // 免费模型（无余额限制）：glm-4-flash / glm-4v-flash
+    // 付费模型（更强，需充值）：glm-5.1 / glm-4.1v-thinking-flashx
+    var textModel = "glm-4-flash"                             // 文本分析（免费）
+    var visionModel = "glm-4v-flash"                          // 截图视觉（免费）
+
+    /// 切到高级付费模型（需要智谱账户有余额）
+    func usePremiumModels() {
+        textModel = "glm-5.1"
+        visionModel = "glm-4.1v-thinking-flashx"
+    }
+
+    /// 切回免费模型
+    func useFreeModels() {
+        textModel = "glm-4-flash"
+        visionModel = "glm-4v-flash"
+    }
 
     private init() {}
 
@@ -103,11 +117,11 @@ actor CloudAIService {
         request.httpMethod = "POST"
         request.setValue("Bearer \(apiKey)", forHTTPHeaderField: "Authorization")
         request.setValue("application/json", forHTTPHeaderField: "Content-Type")
-        request.timeoutInterval = 60  // 视觉模型可能慢一些
+        request.timeoutInterval = 30
 
         let body: [String: Any] = [
             "model": visionModel,
-            "max_tokens": 1200,
+            "max_tokens": visionModel.contains("flash") && !visionModel.contains("thinking") ? 300 : 1200,
             "messages": [[
                 "role": "user",
                 "content": [
