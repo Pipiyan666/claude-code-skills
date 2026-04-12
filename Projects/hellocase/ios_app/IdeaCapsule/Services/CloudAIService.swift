@@ -10,27 +10,13 @@ import Foundation
 actor CloudAIService {
     static let shared = CloudAIService()
 
-    // 智谱 API 配置
+    // API 配置（Kimi K2.5 中转 — OpenAI 兼容格式）
     private var apiKey: String = ""
-    private let baseURL = "https://open.bigmodel.cn/api/paas/v4/chat/completions"
+    private var baseURL = "https://kimi.a7m.com.cn/v1/chat/completions"
 
-    // 模型配置（可切换免费/付费）
-    // 免费模型（无余额限制）：glm-4-flash / glm-4v-flash
-    // 付费模型（更强，需充值）：glm-5.1 / glm-4.1v-thinking-flashx
-    var textModel = "glm-4-flash"                             // 文本分析（免费）
-    var visionModel = "glm-4v-flash"                          // 截图视觉（免费）
-
-    /// 切到高级付费模型（需要智谱账户有余额）
-    func usePremiumModels() {
-        textModel = "glm-5.1"
-        visionModel = "glm-4.1v-thinking-flashx"
-    }
-
-    /// 切回免费模型
-    func useFreeModels() {
-        textModel = "glm-4-flash"
-        visionModel = "glm-4v-flash"
-    }
+    // Kimi K2.5：编码和推理都极强，带 thinking（链式推理）
+    var textModel = "kimi-for-coding"
+    var visionModel = "kimi-for-coding"  // K2.5 也支持视觉
 
     private init() {}
 
