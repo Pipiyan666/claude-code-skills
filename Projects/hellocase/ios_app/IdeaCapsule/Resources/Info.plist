@@ -4,8 +4,6 @@
 <dict>
 	<key>CFBundleDevelopmentRegion</key>
 	<string>$(DEVELOPMENT_LANGUAGE)</string>
-	<key>CFBundleDisplayName</key>
-	<string>灵感胶囊</string>
 	<key>CFBundleExecutable</key>
 	<string>$(EXECUTABLE_NAME)</string>
 	<key>CFBundleIdentifier</key>
@@ -17,36 +15,12 @@
 	<key>CFBundlePackageType</key>
 	<string>APPL</string>
 	<key>CFBundleShortVersionString</key>
-	<string>1.0.0</string>
+	<string>1.0</string>
 	<key>CFBundleVersion</key>
-	<integer>1</integer>
-	<key>LSRequiresIPhoneOS</key>
+	<string>1</string>
+	<key>com.apple.security.app-sandbox</key>
 	<true/>
-	<key>NSCameraUsageDescription</key>
-	<string>灵感胶囊需要相机权限，让你直接拍照保存灵感。</string>
-	<key>NSMicrophoneUsageDescription</key>
-	<string>灵感胶囊需要麦克风权限，支持语音输入灵感。</string>
-	<key>NSPhotoLibraryUsageDescription</key>
-	<string>灵感胶囊需要读取你的相册，自动识别截图并用本地 AI 提取知识。所有数据 100% 在你的 iPhone 上处理，绝不上传云端。</string>
-	<key>NSSpeechRecognitionUsageDescription</key>
-	<string>灵感胶囊需要语音识别权限，用本地 Speech Framework 把语音转成文字。所有处理在设备上完成。</string>
-	<key>UIApplicationSceneManifest</key>
-	<dict>
-		<key>UIApplicationSupportsMultipleScenes</key>
-		<true/>
-	</dict>
-	<key>UILaunchScreen</key>
-	<dict>
-		<key>UIColorName</key>
-		<string></string>
-	</dict>
-	<key>UIRequiredDeviceCapabilities</key>
-	<array>
-		<string>arm64</string>
-	</array>
-	<key>UISupportedInterfaceOrientations</key>
-	<array>
-		<string>UIInterfaceOrientationPortrait</string>
-	</array>
+	<key>com.apple.security.files.user-selected.read-only</key>
+	<true/>
 </dict>
 </plist>

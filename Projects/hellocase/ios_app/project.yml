@@ -55,13 +55,9 @@ targets:
         NSCameraUsageDescription: "灵感胶囊需要相机权限，让你直接拍照保存灵感。"
         NSMicrophoneUsageDescription: "灵感胶囊需要麦克风权限，支持语音输入灵感。"
         NSSpeechRecognitionUsageDescription: "灵感胶囊需要语音识别权限，用本地 Speech Framework 把语音转成文字。所有处理在设备上完成。"
-    entitlements:
-      path: IdeaCapsule.entitlements
       properties:
         com.apple.security.app-sandbox: true
         com.apple.security.files.user-selected.read-only: true
-        com.apple.security.application-groups:
-          - group.com.ideacapsule.shared
     dependencies: []
     settings:
       base:

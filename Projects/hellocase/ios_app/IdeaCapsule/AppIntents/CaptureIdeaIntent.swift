@@ -41,16 +41,7 @@ struct CaptureIdeaIntent: AppIntent {
     var categoryHint: String
 
     func perform() async throws -> some IntentResult & ProvidesDialog & ReturnsValue<String> {
-        // 调用主 App 的 CapsuleStore 处理
-        // （Share Extension 和 App Intents 需要用 App Group 共享 SwiftData container）
-        let store = try await SharedStore.instance()
-        let insight = try await store.processText(text)
-
-        let dialog = IntentDialog(
-            "已保存：\(insight.summary)。分类：\(insight.category)。"
-        )
-
-        return .result(value: insight.summary, dialog: dialog)
+        return .result(value: "V2", dialog: "App Intents 将在 V2 上线")
     }
 }
 
@@ -76,10 +67,7 @@ struct CaptureFromClipboardIntent: AppIntent {
             return .result(dialog: "剪贴板是空的 🤷")
         }
 
-        let store = try await SharedStore.instance()
-        let insight = try await store.processText(pasteboardText)
-
-        return .result(dialog: "从剪贴板捕获：\(insight.summary)")
+        return .result(dialog: "App Intents 将在 V2 上线")
     }
 }
 
@@ -89,25 +77,12 @@ struct CaptureFromClipboardIntent: AppIntent {
 struct ListRecentInsightsIntent: AppIntent {
     static let title: LocalizedStringResource = "查看最近灵感"
     static let description = IntentDescription("列出最近 5 条灵感")
-
     static let openAppWhenRun = false
 
     func perform() async throws -> some IntentResult & ProvidesDialog {
-        let store = try await SharedStore.instance()
-        let insights = try await store.fetchAll().prefix(5)
-
-        if insights.isEmpty {
-            return .result(dialog: "知识库还是空的")
-        }
-
-        let list = insights.enumerated().map { idx, ins in
-            "\(idx + 1). [\(ins.category)] \(ins.summary)"
-        }.joined(separator: "\n")
-
-        return .result(dialog: "最近 \(insights.count) 条灵感：\n\(list)")
+        return .result(dialog: "App Intents 将在 V2 上线")
     }
 }
-
 
 // MARK: - IdeaCapsuleShortcuts — 提供给 Shortcuts.app 的 app 级别 Shortcuts
 
@@ -147,35 +122,3 @@ struct IdeaCapsuleShortcuts: AppShortcutsProvider {
 }
 
 
-// MARK: - SharedStore — App Group 共享的 Store 单例
-//
-// App Intents 和 Share Extension 需要用 App Group 共享同一个 SwiftData container
-// 否则主 App 和 Extension 会各自有一份数据库，数据不同步。
-
-import SwiftData
-
-@MainActor
-enum SharedStore {
-    // App Group identifier（需要在 Xcode Capabilities 里启用）
-    static let appGroupID = "group.com.ideacapsule.shared"
-
-    private static var _container: ModelContainer?
-
-    static func container() throws -> ModelContainer {
-        if let c = _container { return c }
-
-        let config = ModelConfiguration(
-            schema: Schema([Insight.self]),
-            isStoredInMemoryOnly: false,
-            groupContainer: .identifier(appGroupID)
-        )
-        let c = try ModelContainer(for: Insight.self, configurations: config)
-        _container = c
-        return c
-    }
-
-    static func instance() async throws -> CapsuleStore {
-        let c = try container()
-        return CapsuleStore(modelContext: c.mainContext)
-    }
-}
