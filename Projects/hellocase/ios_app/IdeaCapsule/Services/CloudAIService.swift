@@ -13,7 +13,7 @@ actor CloudAIService {
     // 智谱 API 配置（用户可以在 App 设置里修改）
     private var apiKey: String = ""
     private let baseURL = "https://open.bigmodel.cn/api/paas/v4/chat/completions"
-    private let model = "glm-4-flash"
+    private let model = "glm-4-plus"
 
     private init() {}
 
