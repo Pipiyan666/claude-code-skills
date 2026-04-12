@@ -268,24 +268,47 @@ struct CaptureView: View {
         VStack(spacing: Theme.Spacing.md) {
             ZStack {
                 Circle()
-                    .fill(Theme.Colors.coral.opacity(0.12))
+                    .fill(viewModel.isRecording ? Theme.Colors.coral : Theme.Colors.coral.opacity(0.12))
                     .frame(width: 88, height: 88)
+                    .scaleEffect(viewModel.isRecording ? 1.15 : 1.0)
+                    .animation(.easeInOut(duration: 0.6).repeatForever(autoreverses: true), value: viewModel.isRecording)
                 Circle()
                     .fill(Theme.Colors.coral)
                     .frame(width: 64, height: 64)
-                Image(systemName: "waveform")
+                Image(systemName: viewModel.isRecording ? "waveform" : "mic.fill")
                     .font(.system(size: 24, weight: .medium))
                     .foregroundStyle(Theme.Colors.cream)
             }
-            Text("按住说话")
+            .onLongPressGesture(minimumDuration: 0.3, pressing: { pressing in
+                if pressing {
+                    viewModel.startRecording()
+                } else {
+                    viewModel.stopRecording()
+                }
+            }, perform: {})
+
+            Text(viewModel.isRecording ? "松开结束" : "长按说话")
                 .font(Theme.Typography.subheading)
                 .foregroundStyle(Theme.Colors.ink)
-            Text("100% 本地识别 · 语音不离开手机")
-                .font(Theme.Typography.caption)
-                .foregroundStyle(Theme.Colors.inkSoft)
+
+            if !viewModel.voiceText.isEmpty {
+                Text(viewModel.voiceText)
+                    .font(Theme.Typography.body)
+                    .foregroundStyle(Theme.Colors.ink)
+                    .padding(Theme.Spacing.sm)
+                    .frame(maxWidth: .infinity, alignment: .leading)
+                    .background(Theme.Colors.ivory)
+                    .clipShape(RoundedRectangle(cornerRadius: 8))
+            } else {
+                Text("100% 本地识别 · 语音不离开手机")
+                    .font(Theme.Typography.caption)
+                    .foregroundStyle(Theme.Colors.inkSoft)
+            }
         }
         .frame(maxWidth: .infinity, minHeight: 180)
-        .editorialCard()
+        .padding(Theme.Spacing.lg)
+        .background(Theme.Colors.paper)
+        .clipShape(RoundedRectangle(cornerRadius: Theme.Radius.card))
     }
 
     private var linkInputCard: some View {
@@ -472,13 +495,25 @@ final class CaptureViewModel {
     var lastResult: Insight?
     var errorMessage: String?
 
+    var isRecording: Bool = false
+    var voiceText: String = ""
+
     var canSubmit: Bool {
         switch mode {
         case .image: return false
         case .text:  return !textInput.trimmingCharacters(in: .whitespaces).isEmpty
-        case .voice: return false
+        case .voice: return !voiceText.trimmingCharacters(in: .whitespaces).isEmpty
         case .link:  return !linkInput.trimmingCharacters(in: .whitespaces).isEmpty
         }
+    }
+
+    @MainActor func startRecording() {
+        isRecording = true
+        voiceText = ""
+    }
+
+    func stopRecording() {
+        isRecording = false
     }
 
     @MainActor
@@ -487,6 +522,9 @@ final class CaptureViewModel {
         case .text where !textInput.isEmpty:
             await runProcessing { try await store.processText(self.textInput) }
             textInput = ""
+        case .voice where !voiceText.isEmpty:
+            await runProcessing { try await store.processText(self.voiceText) }
+            voiceText = ""
         case .link where !linkInput.isEmpty:
             errorMessage = "链接解析将在 V1.1 上线"
         default:
