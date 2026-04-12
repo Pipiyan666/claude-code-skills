@@ -83,67 +83,63 @@ actor CloudAIService {
         guard !apiKey.isEmpty else { throw CloudAIError.noAPIKey }
 
         let base64 = imageData.base64EncodedString()
-        print("[CloudAI] 视觉分析开始，模型: \(visionModel)，图片大小: \(imageData.count / 1024)KB")
+        print("[CloudAI] 视觉分析，图片 \(imageData.count / 1024)KB")
 
-        // 用 Codable 构建 JSON（彻底避免 JSONSerialization + NSNumber crash）
-        struct VisionRequest: Encodable {
-            let model: String
-            let max_tokens: Int
-            let messages: [VisionMessage]
-        }
-        struct VisionMessage: Encodable {
-            let role: String
-            let content: [VisionContent]
-        }
-        struct VisionContent: Encodable {
-            let type: String
-            let text: String?
-            let image_url: ImageURL?
-            struct ImageURL: Encodable { let url: String }
-        }
+        // 纯字符串拼接 JSON（零框架依赖，彻底避免 NSNumber crash）
+        let rawJSON = "{\"model\":\"\(visionModel)\",\"max_tokens\":800,\"messages\":[{\"role\":\"user\",\"content\":[{\"type\":\"text\",\"text\":\"Analyze this screenshot. Return JSON only: {\\\"summary\\\":\\\"30 char Chinese summary\\\",\\\"category\\\":\\\"other\\\",\\\"tags\\\":[\\\"tag1\\\"],\\\"keywords\\\":[\\\"kw1\\\"],\\\"insight\\\":\\\"action suggestion\\\"}. Respond in Chinese.\"},{\"type\":\"image_url\",\"image_url\":{\"url\":\"data:image/jpeg;base64,\(base64)\"}}]}]}"
 
-        let visionReq = VisionRequest(
-            model: visionModel,
-            max_tokens: 800,
-            messages: [VisionMessage(
-                role: "user",
-                content: [
-                    VisionContent(type: "text", text: "请分析这张截图，返回JSON：{\"summary\":\"30字总结\",\"category\":\"社媒灵感/会议记录/产品想法/学习笔记/其他\",\"tags\":[\"标签\"],\"keywords\":[\"关键词\"],\"insight\":\"行动建议\"}。用中文，不要markdown包裹。", image_url: nil),
-                    VisionContent(type: "image_url", text: nil, image_url: .init(url: "data:image/jpeg;base64,\(base64)"))
-                ]
-            )]
-        )
+        guard let bodyData = rawJSON.data(using: .utf8) else {
+            throw CloudAIError.invalidResponse
+        }
 
         var request = URLRequest(url: URL(string: baseURL)!)
         request.httpMethod = "POST"
         request.setValue("Bearer \(apiKey)", forHTTPHeaderField: "Authorization")
         request.setValue("application/json", forHTTPHeaderField: "Content-Type")
-        request.timeoutInterval = 30  // K2.5 视觉推理需要 10-15 秒
-
-        request.httpBody = try JSONEncoder().encode(visionReq)
-        print("[CloudAI] 请求已发送，等待响应...")
+        request.timeoutInterval = 30
+        request.httpBody = bodyData
+        print("[CloudAI] 请求已发送...")
 
         let (data, response) = try await URLSession.shared.data(for: request)
+        let code = (response as? HTTPURLResponse)?.statusCode ?? -1
+        print("[CloudAI] 响应: HTTP \(code)")
 
-        let statusCode = (response as? HTTPURLResponse)?.statusCode ?? -1
-        print("[CloudAI] 视觉响应: HTTP \(statusCode)")
-
-        guard (200...299).contains(statusCode) else {
+        guard (200...299).contains(code) else {
             let body = String(data: data, encoding: .utf8) ?? ""
-            print("[CloudAI] ❌ 视觉错误: \(body.prefix(200))")
-            throw CloudAIError.apiError(statusCode: statusCode, body: body)
+            print("[CloudAI] ❌ \(body.prefix(200))")
+            throw CloudAIError.apiError(statusCode: code, body: body)
         }
 
-        guard let json = try JSONSerialization.jsonObject(with: data) as? [String: Any],
-              let choices = json["choices"] as? [[String: Any]],
-              let firstChoice = choices.first,
-              let message = firstChoice["message"] as? [String: Any],
-              let content = message["content"] as? String else {
-            print("[CloudAI] ❌ 响应解析失败")
+        // 解析响应（也用手动方式，不依赖 JSONSerialization）
+        guard let responseStr = String(data: data, encoding: .utf8) else {
             throw CloudAIError.invalidResponse
         }
 
-        print("[CloudAI] ✅ 视觉分析完成: \(content.prefix(80))")
+        // 提取 content 字段
+        guard let contentStart = responseStr.range(of: "\"content\":\""),
+              let contentEnd = responseStr.range(of: "\"},\"logprobs\"", range: contentStart.upperBound..<responseStr.endIndex)
+                ?? responseStr.range(of: "\"},\"refusal\"", range: contentStart.upperBound..<responseStr.endIndex)
+                ?? responseStr.range(of: "\"}", range: contentStart.upperBound..<responseStr.endIndex)
+        else {
+            // Fallback: 用 JSONSerialization 解析响应（请求构建已经不用了）
+            guard let json = try JSONSerialization.jsonObject(with: data) as? [String: Any],
+                  let choices = json["choices"] as? [[String: Any]],
+                  let msg = choices.first?["message"] as? [String: Any],
+                  let content = msg["content"] as? String else {
+                throw CloudAIError.invalidResponse
+            }
+            print("[CloudAI] ✅ (fallback) \(content.prefix(60))")
+            return try parseInsightResult(content)
+        }
+
+        let rawContent = String(responseStr[contentStart.upperBound..<contentEnd.lowerBound])
+        // unescape JSON string
+        let content = rawContent
+            .replacingOccurrences(of: "\\n", with: "\n")
+            .replacingOccurrences(of: "\\\"", with: "\"")
+            .replacingOccurrences(of: "\\\\", with: "\\")
+
+        print("[CloudAI] ✅ \(content.prefix(60))")
         return try parseInsightResult(content)
     }
 
