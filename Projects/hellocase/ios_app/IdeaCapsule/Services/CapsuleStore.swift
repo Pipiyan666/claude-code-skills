@@ -32,17 +32,26 @@ final class CapsuleStore {
     ///   2. AnalyzeAgent: Apple FoundationModels 结构化分析
     ///   3. SaveAgent: 写入 SwiftData
     func processImage(_ image: UIImage, asset: PHAsset? = nil) async throws -> Insight {
-        // 一步法：直接发图给 Kimi K2.5（跳过 Vision OCR，避免 actor hang）
-        // K2.5 同时完成 OCR + 理解 + 结构化分析
-        guard let imageData = image.jpegData(compressionQuality: 0.7) else {
+        print("[Store] >>> processImage START")
+
+        print("[Store] 1. jpegData...")
+        guard let imageData = image.jpegData(compressionQuality: 0.5) else {
             throw NSError(domain: "CapsuleStore", code: -1,
                           userInfo: [NSLocalizedDescriptionKey: "图片转换失败"])
         }
+        print("[Store] 2. JPEG \(imageData.count / 1024)KB")
 
-        print("[CapsuleStore] 一步法：发图给 K2.5 ...")
-        let analysis = try await ModelRouter.shared.analyzeImage(imageData: imageData)
+        print("[Store] 3. analyzeImage...")
+        let analysis: AnalysisResult
+        do {
+            analysis = try await ModelRouter.shared.analyzeImage(imageData: imageData)
+        } catch {
+            print("[Store] ❌ \(error)")
+            throw error
+        }
+        print("[Store] 4. OK: \(analysis.summary.prefix(30))")
+
         let rawText = analysis.summary
-        print("[CapsuleStore] 完成: \(rawText.prefix(50))")
 
         // 持久化
         let insight = Insight(

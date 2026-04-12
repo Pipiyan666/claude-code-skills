@@ -504,20 +504,27 @@ final class CaptureViewModel {
 
     @MainActor
     func processSelectedImages(_ images: [UIImage], store: CapsuleStore) async {
+        print("[VM] processSelectedImages 开始, \(images.count) 张图")
         withAnimation(Theme.Motion.emphasized) { isProcessing = true }
-        defer { withAnimation(Theme.Motion.emphasized) { isProcessing = false } }
+        errorMessage = nil
 
         for (idx, image) in images.enumerated() {
+            print("[VM] 处理第 \(idx+1) 张, size: \(image.size)")
             do {
                 let result = try await store.processImage(image)
-                // 显示最后一张的结果
+                print("[VM] 第 \(idx+1) 张成功: \(result.summary.prefix(30))")
                 if idx == images.count - 1 {
                     withAnimation(Theme.Motion.dramatic) { lastResult = result }
                 }
             } catch {
-                errorMessage = "第 \(idx + 1) 张失败: \(error.localizedDescription)"
+                let msg = "第 \(idx + 1) 张失败: \(error.localizedDescription)"
+                print("[VM] ❌ \(msg)")
+                errorMessage = msg
             }
         }
+
+        withAnimation(Theme.Motion.emphasized) { isProcessing = false }
+        print("[VM] processSelectedImages 结束")
     }
 
     func pasteFromClipboard() {
