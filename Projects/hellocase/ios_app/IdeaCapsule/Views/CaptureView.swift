@@ -17,7 +17,8 @@ import SwiftData
 struct CaptureView: View {
     @Environment(CapsuleStore.self) private var store
     @State private var viewModel = CaptureViewModel()
-    @State private var selectedItem: PhotosPickerItem?
+    @State private var selectedItems: [PhotosPickerItem] = []
+    @State private var selectedImages: [UIImage] = []
 
     var body: some View {
         ScrollView(showsIndicators: false) {
@@ -25,7 +26,17 @@ struct CaptureView: View {
                 heroSection
                 modeSelector
                 inputArea
-                actionButton
+
+                // 已选截图预览 + 分析按钮
+                if !selectedImages.isEmpty && viewModel.mode == .image {
+                    selectedImagesPreview
+                    analyzeImagesButton
+                }
+
+                // 文字/链接模式的按钮
+                if viewModel.mode != .image {
+                    actionButton
+                }
 
                 if viewModel.isProcessing {
                     ProcessingIndicator()
@@ -40,13 +51,29 @@ struct CaptureView: View {
                         ))
                 }
 
-                Spacer().frame(height: 120) // tab bar 留白
+                Spacer().frame(height: 120)
             }
             .padding(.horizontal, Theme.Spacing.lg)
             .padding(.top, Theme.Spacing.xl)
         }
-        .onChange(of: selectedItem) { _, item in
-            Task { await viewModel.processPickedImage(item: item, store: store) }
+        .onChange(of: selectedItems) { _, items in
+            Task { await loadSelectedImages(items) }
+        }
+    }
+
+    /// 把 PhotosPickerItem 转成 UIImage 预览
+    private func loadSelectedImages(_ items: [PhotosPickerItem]) async {
+        var images: [UIImage] = []
+        for item in items {
+            if let data = try? await item.loadTransferable(type: Data.self),
+               let image = UIImage(data: data) {
+                images.append(image)
+            }
+        }
+        await MainActor.run {
+            withAnimation(Theme.Motion.emphasized) {
+                selectedImages = images
+            }
         }
     }
 
@@ -110,23 +137,89 @@ struct CaptureView: View {
     }
 
     private var imageInputCard: some View {
-        PhotosPicker(selection: $selectedItem, matching: .images) {
+        PhotosPicker(
+            selection: $selectedItems,
+            maxSelectionCount: 9,
+            matching: .images
+        ) {
             VStack(spacing: Theme.Spacing.md) {
-                Image(systemName: "photo.stack")
+                Image(systemName: selectedImages.isEmpty ? "photo.stack" : "photo.badge.plus")
                     .font(.system(size: 40, weight: .light))
                     .foregroundStyle(Theme.Colors.coral)
-                Text("从相册选择截图")
+                Text(selectedImages.isEmpty ? "从相册选择截图" : "重新选择")
                     .font(Theme.Typography.subheading)
                     .foregroundStyle(Theme.Colors.ink)
-                Text("小红书 · 会议 · PPT · 待办")
+                Text("小红书 · 会议 · PPT · 待办 · 最多 9 张")
                     .font(Theme.Typography.caption)
                     .foregroundStyle(Theme.Colors.inkSoft)
             }
-            .frame(maxWidth: .infinity, minHeight: 180)
+            .frame(maxWidth: .infinity, minHeight: selectedImages.isEmpty ? 180 : 100)
             .padding(Theme.Spacing.lg)
             .background(Theme.Colors.paper)
             .clipShape(RoundedRectangle(cornerRadius: Theme.Radius.card))
         }
+    }
+
+    /// 已选截图缩略图网格
+    private var selectedImagesPreview: some View {
+        VStack(alignment: .leading, spacing: Theme.Spacing.sm) {
+            HStack {
+                Text("已选 \(selectedImages.count) 张")
+                    .font(Theme.Typography.caption)
+                    .foregroundStyle(Theme.Colors.inkSoft)
+                Spacer()
+                Button {
+                    withAnimation(Theme.Motion.emphasized) {
+                        selectedItems = []
+                        selectedImages = []
+                    }
+                } label: {
+                    Text("清除")
+                        .font(Theme.Typography.caption)
+                        .foregroundStyle(Theme.Colors.coral)
+                }
+            }
+
+            LazyVGrid(columns: [
+                GridItem(.flexible(), spacing: 8),
+                GridItem(.flexible(), spacing: 8),
+                GridItem(.flexible(), spacing: 8),
+            ], spacing: 8) {
+                ForEach(Array(selectedImages.enumerated()), id: \.offset) { idx, image in
+                    Image(uiImage: image)
+                        .resizable()
+                        .aspectRatio(contentMode: .fill)
+                        .frame(height: 100)
+                        .clipShape(RoundedRectangle(cornerRadius: 8))
+                        .overlay(
+                            RoundedRectangle(cornerRadius: 8)
+                                .stroke(Theme.Colors.hairline, lineWidth: 1)
+                        )
+                }
+            }
+        }
+        .padding(Theme.Spacing.md)
+        .background(Theme.Colors.paper)
+        .clipShape(RoundedRectangle(cornerRadius: Theme.Radius.card))
+    }
+
+    /// 分析已选截图的按钮
+    private var analyzeImagesButton: some View {
+        Button {
+            Task { await viewModel.processSelectedImages(selectedImages, store: store) }
+        } label: {
+            HStack(spacing: 8) {
+                Image(systemName: "sparkle")
+                    .font(.system(size: 14, weight: .semibold))
+                Text("分析 \(selectedImages.count) 张截图")
+                Spacer()
+                Image(systemName: "arrow.right")
+                    .font(.system(size: 13, weight: .semibold))
+            }
+            .editorialButton()
+        }
+        .disabled(viewModel.isProcessing)
+        .opacity(viewModel.isProcessing ? 0.4 : 1)
     }
 
     private var textInputCard: some View {
@@ -365,6 +458,24 @@ final class CaptureViewModel {
               let data = try? await item.loadTransferable(type: Data.self),
               let image = UIImage(data: data) else { return }
         await runProcessing { try await store.processImage(image) }
+    }
+
+    @MainActor
+    func processSelectedImages(_ images: [UIImage], store: CapsuleStore) async {
+        withAnimation(Theme.Motion.emphasized) { isProcessing = true }
+        defer { withAnimation(Theme.Motion.emphasized) { isProcessing = false } }
+
+        for (idx, image) in images.enumerated() {
+            do {
+                let result = try await store.processImage(image)
+                // 显示最后一张的结果
+                if idx == images.count - 1 {
+                    withAnimation(Theme.Motion.dramatic) { lastResult = result }
+                }
+            } catch {
+                errorMessage = "第 \(idx + 1) 张失败: \(error.localizedDescription)"
+            }
+        }
     }
 
     func pasteFromClipboard() {
