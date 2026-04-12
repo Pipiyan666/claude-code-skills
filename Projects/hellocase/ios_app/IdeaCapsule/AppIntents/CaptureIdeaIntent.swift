@@ -1,5 +1,6 @@
 import AppIntents
 import Foundation
+import UIKit
 
 // MARK: - CaptureIdeaIntent — 快捷指令 + Siri + Back Tap 入口
 //
@@ -21,7 +22,7 @@ struct CaptureIdeaIntent: AppIntent {
     )
 
     /// 让这个 Intent 出现在 Shortcuts / Siri 搜索
-    static var openAppWhenRun: Bool = false
+    static let openAppWhenRun = false
 
     /// 参数：灵感内容（Siri 会问「你想记下什么？」）
     @Parameter(
@@ -62,7 +63,7 @@ struct CaptureFromClipboardIntent: AppIntent {
         "把剪贴板里的内容（比如刚复制的小红书笔记）直接变成灵感"
     )
 
-    static var openAppWhenRun: Bool = false
+    static let openAppWhenRun = false
 
     func perform() async throws -> some IntentResult & ProvidesDialog {
         // UIPasteboard 只能在主线程 / App extension 里用
@@ -89,7 +90,7 @@ struct ListRecentInsightsIntent: AppIntent {
     static let title: LocalizedStringResource = "查看最近灵感"
     static let description = IntentDescription("列出最近 5 条灵感")
 
-    static var openAppWhenRun: Bool = false
+    static let openAppWhenRun = false
 
     func perform() async throws -> some IntentResult & ProvidesDialog {
         let store = try await SharedStore.instance()

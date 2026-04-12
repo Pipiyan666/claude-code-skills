@@ -135,7 +135,7 @@ struct InsightsTabView: View {
             EditorialSectionTitle(label: "YOUR PORTRAIT", title: "你最近关注的")
 
             ZStack(alignment: .topLeading) {
-                Text(""")
+                Text("\u{201C}")
                     .font(.system(size: 100, weight: .regular, design: .serif))
                     .foregroundStyle(Theme.Colors.jade.opacity(0.25))
                     .offset(x: -8, y: -30)

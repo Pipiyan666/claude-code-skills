@@ -148,20 +148,32 @@ extension VoiceInputService {
         let service = VoiceInputService()
         let stream = try await service.startListening()
 
-        var finalText = ""
-        let task = Task {
-            for try await update in stream {
-                finalText = update.text
-                if update.isFinal { break }
-            }
-        }
+        // 用 actor-isolated 容器收集结果（避免 Sendable 警告）
+        let collector = TranscriptionCollector()
 
-        // 最多录 N 秒
+        async let collection: () = collector.collect(from: stream)
         try await Task.sleep(for: .seconds(seconds))
         await service.stopListening()
-        _ = await task.result
+        _ = try? await collection
 
-        return finalText
+        return await collector.text
+    }
+}
+
+
+/// Sendable-safe 的转录结果收集器
+private actor TranscriptionCollector {
+    var text: String = ""
+
+    func collect(from stream: AsyncThrowingStream<TranscriptionUpdate, Error>) async {
+        do {
+            for try await update in stream {
+                text = update.text
+                if update.isFinal { break }
+            }
+        } catch {
+            // stream 被取消时正常结束
+        }
     }
 }
 

@@ -123,7 +123,9 @@ struct CaptureView: View {
                     .foregroundStyle(Theme.Colors.inkSoft)
             }
             .frame(maxWidth: .infinity, minHeight: 180)
-            .editorialCard()
+            .padding(Theme.Spacing.lg)
+            .background(Theme.Colors.paper)
+            .clipShape(RoundedRectangle(cornerRadius: Theme.Radius.card))
         }
     }
 
@@ -137,7 +139,7 @@ struct CaptureView: View {
                 .padding(Theme.Spacing.md)
 
             if viewModel.textInput.isEmpty {
-                Text(""写下闪过脑海的那一刻...")
+                Text("\u{201C}写下闪过脑海的那一刻...")
                     .font(Theme.Typography.bodyEmphasis)
                     .foregroundStyle(Theme.Colors.inkMuted)
                     .padding(.top, Theme.Spacing.md + 8)

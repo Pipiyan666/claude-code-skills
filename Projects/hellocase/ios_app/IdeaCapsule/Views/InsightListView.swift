@@ -172,7 +172,7 @@ struct InsightListView: View {
             Text("书库还是空的")
                 .font(Theme.Typography.subheading)
                 .foregroundStyle(Theme.Colors.ink)
-            Text("去"捕获"Tab 记下你的第一条灵感")
+            Text("去\u{201C}捕获\u{201D}Tab 记下你的第一条灵感")
                 .font(Theme.Typography.bodyEmphasis)
                 .foregroundStyle(Theme.Colors.inkSoft)
         }

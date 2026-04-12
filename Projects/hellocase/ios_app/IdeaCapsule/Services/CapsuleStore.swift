@@ -10,7 +10,7 @@ import UIKit
 //
 // V2 多 Agent 思想的 Swift 版本：每个 step 是一个 actor 方法。
 
-@Observable
+@MainActor @Observable
 final class CapsuleStore {
     // SwiftData 上下文
     private let modelContext: ModelContext

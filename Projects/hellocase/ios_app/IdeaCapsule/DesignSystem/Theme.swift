@@ -292,7 +292,7 @@ struct EditorialQuote: View {
 
     var body: some View {
         VStack(alignment: .leading, spacing: Theme.Spacing.sm) {
-            Text(""")
+            Text("\u{201C}")
                 .font(Theme.Typography.decorativeQuote)
                 .foregroundStyle(Theme.Colors.coral.opacity(0.3))
                 .offset(y: 20)

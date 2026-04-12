@@ -70,14 +70,8 @@ actor AIService {
         return response.content
     }
 
-    /// 流式分析一条灵感（用于实时 UI 更新）
-    func analyzeStreaming(rawText: String) -> AsyncThrowingStream<InsightAnalysis.PartiallyGenerated, Error> {
-        let session = LanguageModelSession(instructions: analysisInstructions)
-        return session.streamResponse(
-            to: "请分析这条灵感：\n\n\(rawText)",
-            generating: InsightAnalysis.self
-        )
-    }
+    // 流式分析（V2 再加，MVP 不需要）
+    // func analyzeStreaming(rawText: String) -> ... { ... }
 
     // MARK: - 跨灵感聚类（V2 思想）
 

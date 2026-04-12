@@ -9,7 +9,7 @@ import SwiftData
 // 同时序列化成 markdown 文件（学 Karpathy 的 markdown-as-DB 思想）
 
 @Model
-final class Insight {
+final class Insight: @unchecked Sendable {
     @Attribute(.unique) var id: String
     var summary: String
     var rawText: String

@@ -126,7 +126,7 @@ struct InsightDetailView: View {
                     }
 
                     ZStack(alignment: .topLeading) {
-                        Text(""")
+                        Text("\u{201C}")
                             .font(.system(size: 80, weight: .regular, design: .serif))
                             .foregroundStyle(Theme.Colors.coral.opacity(0.25))
                             .offset(x: -12, y: -20)
