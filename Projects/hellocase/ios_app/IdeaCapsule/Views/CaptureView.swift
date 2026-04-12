@@ -516,55 +516,94 @@ final class CaptureViewModel {
     @MainActor func startRecording() {
         voiceError = nil
         voiceText = ""
-        SFSpeechRecognizer.requestAuthorization { status in
+        print("[Voice] 开始请求权限...")
+
+        // 1. 先请求麦克风权限
+        AVAudioApplication.requestRecordPermission { micGranted in
             Task { @MainActor in
-                if status == .authorized {
-                    self.doStartRecording()
-                } else {
-                    self.voiceError = "请在设置里允许语音识别权限"
+                guard micGranted else {
+                    self.voiceError = "需要麦克风权限。请在设置 > 灵感胶囊 > 麦克风 里开启"
+                    print("[Voice] 麦克风权限拒绝")
+                    return
+                }
+                print("[Voice] 麦克风权限OK")
+
+                // 2. 再请求语音识别权限
+                SFSpeechRecognizer.requestAuthorization { speechStatus in
+                    Task { @MainActor in
+                        guard speechStatus == .authorized else {
+                            self.voiceError = "需要语音识别权限。请在设置 > 灵感胶囊 > 语音识别 里开启"
+                            print("[Voice] 语音识别权限拒绝: \(speechStatus.rawValue)")
+                            return
+                        }
+                        print("[Voice] 语音识别权限OK，启动录音...")
+                        self.doStartRecording()
+                    }
                 }
             }
         }
     }
 
     @MainActor private func doStartRecording() {
-        guard let recognizer = SFSpeechRecognizer(locale: Locale(identifier: "zh-CN")),
-              recognizer.isAvailable else {
-            voiceError = "语音识别不可用"
+        let recognizer = SFSpeechRecognizer(locale: Locale(identifier: "zh-CN"))
+        guard let recognizer, recognizer.isAvailable else {
+            voiceError = "中文语音识别不可用（请检查系统语言设置）"
+            print("[Voice] recognizer 不可用")
             return
         }
+        print("[Voice] recognizer OK, onDevice=\(recognizer.supportsOnDeviceRecognition)")
+
         let request = SFSpeechAudioBufferRecognitionRequest()
         request.shouldReportPartialResults = true
         if recognizer.supportsOnDeviceRecognition {
             request.requiresOnDeviceRecognition = true
         }
+
         let engine = AVAudioEngine()
         let node = engine.inputNode
         let fmt = node.outputFormat(forBus: 0)
         node.installTap(onBus: 0, bufferSize: 1024, format: fmt) { buf, _ in
             request.append(buf)
         }
+
         do {
-            try AVAudioSession.sharedInstance().setCategory(.record, mode: .measurement)
-            try AVAudioSession.sharedInstance().setActive(true)
+            let session = AVAudioSession.sharedInstance()
+            try session.setCategory(.record, mode: .measurement, options: .duckOthers)
+            try session.setActive(true, options: .notifyOthersOnDeactivation)
             engine.prepare()
             try engine.start()
+            print("[Voice] 引擎启动成功")
         } catch {
-            voiceError = "麦克风启动失败"
+            voiceError = "麦克风启动失败: \(error.localizedDescription)"
+            print("[Voice] 引擎启动失败: \(error)")
             return
         }
+
         self.audioEngine = engine
         self.isRecording = true
-        recognitionTask = recognizer.recognitionTask(with: request) { result, err in
-            Task { @MainActor [weak self] in
+
+        recognitionTask = recognizer.recognitionTask(with: request) { [weak self] result, error in
+            Task { @MainActor in
                 guard let self else { return }
-                if let result { self.voiceText = result.bestTranscription.formattedString }
-                if err != nil || (result?.isFinal ?? false) { self.stopRecording() }
+                if let result {
+                    self.voiceText = result.bestTranscription.formattedString
+                    print("[Voice] 识别: \(self.voiceText.prefix(50))")
+                }
+                if let error {
+                    print("[Voice] 识别错误: \(error.localizedDescription)")
+                    self.voiceError = error.localizedDescription
+                    self.stopRecording()
+                }
+                if result?.isFinal ?? false {
+                    print("[Voice] 识别完成")
+                    self.stopRecording()
+                }
             }
         }
     }
 
     @MainActor func stopRecording() {
+        print("[Voice] 停止录音")
         audioEngine?.stop()
         audioEngine?.inputNode.removeTap(onBus: 0)
         recognitionTask?.cancel()
