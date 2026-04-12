@@ -117,18 +117,21 @@ actor CloudAIService {
         request.httpMethod = "POST"
         request.setValue("Bearer \(apiKey)", forHTTPHeaderField: "Authorization")
         request.setValue("application/json", forHTTPHeaderField: "Content-Type")
-        request.timeoutInterval = 30
+        request.timeoutInterval = 15
+        print("[CloudAI] 视觉分析，模型: \(visionModel)")
 
+        // 视觉请求必须用 JSONSerialization（content 是混合类型数组），但移除 temperature
+        let maxTok = visionModel.contains("flash") && !visionModel.contains("thinking") ? 300 : 1200
         let body: [String: Any] = [
             "model": visionModel,
-            "max_tokens": visionModel.contains("flash") && !visionModel.contains("thinking") ? 300 : 1200,
+            "max_tokens": NSNumber(value: maxTok),
             "messages": [[
                 "role": "user",
                 "content": [
-                    ["type": "text", "text": prompt],
-                    ["type": "image_url", "image_url": ["url": "data:image/jpeg;base64,\(base64)"]]
-                ]
-            ]]
+                    ["type": "text", "text": prompt] as [String: String],
+                    ["type": "image_url", "image_url": ["url": "data:image/jpeg;base64,\(base64)"]] as [String: Any]
+                ] as [[String: Any]]
+            ] as [String: Any]]
         ]
         request.httpBody = try JSONSerialization.data(withJSONObject: body)
 
@@ -163,28 +166,37 @@ actor CloudAIService {
         request.httpMethod = "POST"
         request.setValue("Bearer \(apiKey)", forHTTPHeaderField: "Authorization")
         request.setValue("application/json", forHTTPHeaderField: "Content-Type")
-        request.timeoutInterval = 30
+        request.timeoutInterval = 15
+        print("[CloudAI] 调用 \(textModel) ...")
 
-        let body: [String: Any] = [
-            "model": textModel,
-            "max_tokens": maxTokens,
-            "temperature": 0.3,
-            "messages": [
-                ["role": "user", "content": prompt]
-            ]
-        ]
-        request.httpBody = try JSONSerialization.data(withJSONObject: body)
+        // 用 Codable 构建 JSON（避免 [String: Any] 桥接 NSNumber 的 crash）
+        struct APIRequest: Encodable {
+            let model: String
+            let max_tokens: Int
+            let messages: [Message]
+            struct Message: Encodable {
+                let role: String
+                let content: String
+            }
+        }
+        let apiReq = APIRequest(
+            model: textModel,
+            max_tokens: maxTokens,
+            messages: [.init(role: "user", content: prompt)]
+        )
+        request.httpBody = try JSONEncoder().encode(apiReq)
 
         let (data, response) = try await URLSession.shared.data(for: request)
 
-        guard let httpResponse = response as? HTTPURLResponse,
-              (200...299).contains(httpResponse.statusCode) else {
-            let statusCode = (response as? HTTPURLResponse)?.statusCode ?? -1
-            throw CloudAIError.apiError(statusCode: statusCode,
-                                         body: String(data: data, encoding: .utf8) ?? "")
+        let statusCode = (response as? HTTPURLResponse)?.statusCode ?? -1
+        print("[CloudAI] 响应: HTTP \(statusCode)")
+
+        guard (200...299).contains(statusCode) else {
+            let body = String(data: data, encoding: .utf8) ?? ""
+            print("[CloudAI] ❌ 错误: \(body.prefix(200))")
+            throw CloudAIError.apiError(statusCode: statusCode, body: body)
         }
 
-        // 解析 OpenAI 兼容的响应格式
         guard let json = try JSONSerialization.jsonObject(with: data) as? [String: Any],
               let choices = json["choices"] as? [[String: Any]],
               let firstChoice = choices.first,

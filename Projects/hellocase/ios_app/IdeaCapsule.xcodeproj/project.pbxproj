@@ -34,7 +34,7 @@
 		238A34ABB783C81F4FF1FB31 /* CapsuleStore.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = CapsuleStore.swift; sourceTree = "<group>"; };
 		560E2443A69ED5479A6A769A /* CaptureIdeaIntent.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = CaptureIdeaIntent.swift; sourceTree = "<group>"; };
 		5E63F986847146D2A9E979F9 /* InsightListView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = InsightListView.swift; sourceTree = "<group>"; };
-		79255A00E3C5C114B544D8D8 /* IdeaCapsule.app */ = {isa = PBXFileReference; includeInIndex = 0; lastKnownFileType = wrapper.application; path = IdeaCapsule.app; sourceTree = BUILT_PRODUCTS_DIR; };
+		79255A00E3C5C114B544D8D8 /* IdeaCapsule.app */ = {isa = PBXFileReference; explicitFileType = wrapper.application; includeInIndex = 0; path = IdeaCapsule.app; sourceTree = BUILT_PRODUCTS_DIR; };
 		8604D55A3E450BCC6D208F79 /* VoiceInputService.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = VoiceInputService.swift; sourceTree = "<group>"; };
 		8F5C2B8F794D4FD6CBC95F8B /* PhotoMonitor.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = PhotoMonitor.swift; sourceTree = "<group>"; };
 		99BE574F2CD2D3C24BE0F7C6 /* OCRService.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = OCRService.swift; sourceTree = "<group>"; };
@@ -174,7 +174,6 @@
 				LastUpgradeCheck = 1430;
 				TargetAttributes = {
 					13A5C81C2439CD660DAD7A03 = {
-						DevelopmentTeam = "";
 						ProvisioningStyle = Automatic;
 					};
 				};
@@ -301,14 +300,14 @@
 				CODE_SIGN_ENTITLEMENTS = IdeaCapsule.entitlements;
 				CODE_SIGN_IDENTITY = "iPhone Developer";
 				CURRENT_PROJECT_VERSION = 1;
-				DEVELOPMENT_TEAM = "";
+				DEVELOPMENT_TEAM = K3HS6QD6FX;
 				INFOPLIST_FILE = IdeaCapsule/Resources/Info.plist;
 				LD_RUNPATH_SEARCH_PATHS = (
 					"$(inherited)",
 					"@executable_path/Frameworks",
 				);
 				MARKETING_VERSION = 1.0.0;
-				PRODUCT_BUNDLE_IDENTIFIER = com.ideacapsule.app;
+				PRODUCT_BUNDLE_IDENTIFIER = com.pipipiyan.ideacapsule;
 				SDKROOT = iphoneos;
 				TARGETED_DEVICE_FAMILY = "1,2";
 			};
@@ -321,14 +320,14 @@
 				CODE_SIGN_ENTITLEMENTS = IdeaCapsule.entitlements;
 				CODE_SIGN_IDENTITY = "iPhone Developer";
 				CURRENT_PROJECT_VERSION = 1;
-				DEVELOPMENT_TEAM = "";
+				DEVELOPMENT_TEAM = K3HS6QD6FX;
 				INFOPLIST_FILE = IdeaCapsule/Resources/Info.plist;
 				LD_RUNPATH_SEARCH_PATHS = (
 					"$(inherited)",
 					"@executable_path/Frameworks",
 				);
 				MARKETING_VERSION = 1.0.0;
-				PRODUCT_BUNDLE_IDENTIFIER = com.ideacapsule.app;
+				PRODUCT_BUNDLE_IDENTIFIER = com.pipipiyan.ideacapsule;
 				SDKROOT = iphoneos;
 				TARGETED_DEVICE_FAMILY = "1,2";
 			};

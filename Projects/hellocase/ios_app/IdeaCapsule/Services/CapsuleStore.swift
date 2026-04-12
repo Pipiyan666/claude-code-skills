@@ -44,7 +44,9 @@ final class CapsuleStore {
         let analysis: AnalysisResult
         let rawText: String
 
-        let isPremium = await CloudAIService.shared.visionModel.contains("thinking")
+        let vModel = await CloudAIService.shared.visionModel
+        print("[CapsuleStore] 处理图片，视觉模型: \(vModel)")
+        let isPremium = vModel.contains("thinking")
         if isPremium {
             // 一步法（GLM-4.1V-Thinking 链式推理）
             do {
@@ -57,8 +59,12 @@ final class CapsuleStore {
             }
         } else {
             // 两步法（免费模型：Vision OCR → 文本分析）
+            print("[CapsuleStore] Step 1: Vision OCR ...")
             rawText = try await OCRService.shared.extractText(from: image)
+            print("[CapsuleStore] Step 1 完成，OCR 文字: \(rawText.prefix(100))")
+            print("[CapsuleStore] Step 2: 文本分析 ...")
             analysis = try await ModelRouter.shared.analyze(rawText: rawText)
+            print("[CapsuleStore] Step 2 完成: \(analysis.summary.prefix(50))")
         }
 
         // 持久化
