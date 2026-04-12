@@ -35,8 +35,8 @@ final class CapsuleStore {
         // Step 1: OCR
         let rawText = try await OCRService.shared.extractText(from: image)
 
-        // Step 2: AI 分析（本地 Apple FoundationModels）
-        let analysis = try await AIService.shared.analyze(rawText: rawText)
+        // Step 2: AI 分析（双轨路由：本地 Apple FM 优先，不可用降级到智谱云端）
+        let analysis = try await ModelRouter.shared.analyze(rawText: rawText)
 
         // Step 3: 持久化
         let insight = Insight(
@@ -57,7 +57,7 @@ final class CapsuleStore {
 
     /// 从一段文字处理出一条 Insight
     func processText(_ text: String) async throws -> Insight {
-        let analysis = try await AIService.shared.analyze(rawText: text)
+        let analysis = try await ModelRouter.shared.analyze(rawText: text)
 
         let insight = Insight(
             summary: analysis.summary,

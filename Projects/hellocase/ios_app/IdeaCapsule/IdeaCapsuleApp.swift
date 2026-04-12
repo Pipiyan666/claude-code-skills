@@ -17,6 +17,14 @@ struct IdeaCapsuleApp: App {
         } catch {
             fatalError("无法创建 SwiftData container: \(error)")
         }
+
+        // 配置云端 AI 降级（智谱 GLM-4）
+        // 当 Apple Intelligence 不可用时自动使用
+        Task {
+            await CloudAIService.shared.configure(
+                apiKey: "7fe411bf0c6740cea7d28cc181a81e9e.cMX697HXl0TMz1CM"
+            )
+        }
     }
 
     var body: some Scene {

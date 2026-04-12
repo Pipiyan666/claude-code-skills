@@ -10,9 +10,11 @@
 		0BBD00C7EEBC547AE155EC06 /* InsightDetailView.swift in Sources */ = {isa = PBXBuildFile; fileRef = B9B6594D510B0123656B83F2 /* InsightDetailView.swift */; };
 		0F905510500B01591D6B16FB /* Insight.swift in Sources */ = {isa = PBXBuildFile; fileRef = A790608B75320B07C90662DE /* Insight.swift */; };
 		276EAF74373501BDAF50321A /* VoiceInputService.swift in Sources */ = {isa = PBXBuildFile; fileRef = 8604D55A3E450BCC6D208F79 /* VoiceInputService.swift */; };
+		33F5AF1A84F89C4A07BD2C37 /* ModelRouter.swift in Sources */ = {isa = PBXBuildFile; fileRef = D84D84D56D0C3E2A882FF70A /* ModelRouter.swift */; };
 		35003B23CAA652A5DA8EA65B /* CapsuleStore.swift in Sources */ = {isa = PBXBuildFile; fileRef = 238A34ABB783C81F4FF1FB31 /* CapsuleStore.swift */; };
 		3A18F7F1C13AC85D450BE5E5 /* CaptureView.swift in Sources */ = {isa = PBXBuildFile; fileRef = D4932BAF6C39DE260A8D2753 /* CaptureView.swift */; };
 		3B29AE280D2E62A5D0735928 /* ResultCard.swift in Sources */ = {isa = PBXBuildFile; fileRef = 02628C0A8E9E11717B1FC584 /* ResultCard.swift */; };
+		44DB912E99B7BAB090E03C09 /* CloudAIService.swift in Sources */ = {isa = PBXBuildFile; fileRef = 1BD465F59C7CEC5F0CFC7A38 /* CloudAIService.swift */; };
 		4A52836DEEE3524C51E4D1E8 /* CaptureIdeaIntent.swift in Sources */ = {isa = PBXBuildFile; fileRef = 560E2443A69ED5479A6A769A /* CaptureIdeaIntent.swift */; };
 		50EFA44168DBF39FF2CA301F /* OCRService.swift in Sources */ = {isa = PBXBuildFile; fileRef = 99BE574F2CD2D3C24BE0F7C6 /* OCRService.swift */; };
 		532B6C918A2C7B583F9B92DA /* InsightListView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 5E63F986847146D2A9E979F9 /* InsightListView.swift */; };
@@ -27,6 +29,7 @@
 /* Begin PBXFileReference section */
 		02628C0A8E9E11717B1FC584 /* ResultCard.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ResultCard.swift; sourceTree = "<group>"; };
 		0B3DFA19E47EBACA9E42E67A /* Theme.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = Theme.swift; sourceTree = "<group>"; };
+		1BD465F59C7CEC5F0CFC7A38 /* CloudAIService.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = CloudAIService.swift; sourceTree = "<group>"; };
 		21DF078D007A229FD71AD67A /* AIService.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = AIService.swift; sourceTree = "<group>"; };
 		238A34ABB783C81F4FF1FB31 /* CapsuleStore.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = CapsuleStore.swift; sourceTree = "<group>"; };
 		560E2443A69ED5479A6A769A /* CaptureIdeaIntent.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = CaptureIdeaIntent.swift; sourceTree = "<group>"; };
@@ -40,6 +43,7 @@
 		B9B6594D510B0123656B83F2 /* InsightDetailView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = InsightDetailView.swift; sourceTree = "<group>"; };
 		BAC53ADDE775F83450C00D5A /* IdeaCapsuleApp.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = IdeaCapsuleApp.swift; sourceTree = "<group>"; };
 		D4932BAF6C39DE260A8D2753 /* CaptureView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = CaptureView.swift; sourceTree = "<group>"; };
+		D84D84D56D0C3E2A882FF70A /* ModelRouter.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ModelRouter.swift; sourceTree = "<group>"; };
 		F3B04E9AEDB8D014C5779A9A /* RootView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = RootView.swift; sourceTree = "<group>"; };
 /* End PBXFileReference section */
 
@@ -85,6 +89,8 @@
 			children = (
 				21DF078D007A229FD71AD67A /* AIService.swift */,
 				238A34ABB783C81F4FF1FB31 /* CapsuleStore.swift */,
+				1BD465F59C7CEC5F0CFC7A38 /* CloudAIService.swift */,
+				D84D84D56D0C3E2A882FF70A /* ModelRouter.swift */,
 				99BE574F2CD2D3C24BE0F7C6 /* OCRService.swift */,
 				8F5C2B8F794D4FD6CBC95F8B /* PhotoMonitor.swift */,
 				8604D55A3E450BCC6D208F79 /* VoiceInputService.swift */,
@@ -201,11 +207,13 @@
 				35003B23CAA652A5DA8EA65B /* CapsuleStore.swift in Sources */,
 				4A52836DEEE3524C51E4D1E8 /* CaptureIdeaIntent.swift in Sources */,
 				3A18F7F1C13AC85D450BE5E5 /* CaptureView.swift in Sources */,
+				44DB912E99B7BAB090E03C09 /* CloudAIService.swift in Sources */,
 				8A799B30312D00032334F7AD /* IdeaCapsuleApp.swift in Sources */,
 				0F905510500B01591D6B16FB /* Insight.swift in Sources */,
 				0BBD00C7EEBC547AE155EC06 /* InsightDetailView.swift in Sources */,
 				532B6C918A2C7B583F9B92DA /* InsightListView.swift in Sources */,
 				7AAAEF99428BCAAE87D554F6 /* InsightsTabView.swift in Sources */,
+				33F5AF1A84F89C4A07BD2C37 /* ModelRouter.swift in Sources */,
 				50EFA44168DBF39FF2CA301F /* OCRService.swift in Sources */,
 				D979FDE3E77B7770854BF3D6 /* PhotoMonitor.swift in Sources */,
 				3B29AE280D2E62A5D0735928 /* ResultCard.swift in Sources */,
