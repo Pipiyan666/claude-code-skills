@@ -48,7 +48,27 @@ final class ModelRouter {
         localModelAvailable = await AIService.shared.isAvailable
     }
 
-    // MARK: - 统一分析接口
+    // MARK: - 截图分析（一步法）
+
+    /// 直接把截图发给视觉模型，一步完成 OCR + 理解 + 分析
+    func analyzeImage(imageData: Data) async throws -> AnalysisResult {
+        // 截图场景：优先用云端 GLM-4.1V-Thinking（链式推理更强）
+        // Apple FM 的视觉能力没有 GLM-4.1V-Thinking 强，所以截图默认走云端
+        guard await CloudAIService.shared.isConfigured else {
+            throw ModelRouterError.noCloudConfig
+        }
+        let result = try await CloudAIService.shared.analyzeImage(imageData: imageData)
+        return AnalysisResult(
+            summary: result.summary,
+            category: result.category,
+            tags: result.tags,
+            keywords: result.keywords,
+            insight: result.insight,
+            engine: "GLM-4.1V-Thinking"
+        )
+    }
+
+    // MARK: - 文本分析
 
     /// 分析一段文字 → Insight 的字段
     func analyze(rawText: String) async throws -> AnalysisResult {

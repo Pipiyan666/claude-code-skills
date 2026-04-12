@@ -32,13 +32,27 @@ final class CapsuleStore {
     ///   2. AnalyzeAgent: Apple FoundationModels 结构化分析
     ///   3. SaveAgent: 写入 SwiftData
     func processImage(_ image: UIImage, asset: PHAsset? = nil) async throws -> Insight {
-        // Step 1: OCR
-        let rawText = try await OCRService.shared.extractText(from: image)
+        // 一步法：直接把图片发给 GLM-4.1V-Thinking 视觉模型
+        // 它会同时完成 OCR + 理解图片含义 + 生成结构化分析
+        // 不再需要先 Vision OCR 再文本分析的两步法
+        guard let imageData = image.jpegData(compressionQuality: 0.8) else {
+            throw NSError(domain: "CapsuleStore", code: -1,
+                          userInfo: [NSLocalizedDescriptionKey: "图片转换失败"])
+        }
 
-        // Step 2: AI 分析（双轨路由：本地 Apple FM 优先，不可用降级到智谱云端）
-        let analysis = try await ModelRouter.shared.analyze(rawText: rawText)
+        let analysis: AnalysisResult
+        do {
+            // 优先一步法（GLM-4.1V-Thinking 视觉推理）
+            analysis = try await ModelRouter.shared.analyzeImage(imageData: imageData)
+        } catch {
+            // 降级：先 OCR 再文本分析（两步法）
+            let rawText = try await OCRService.shared.extractText(from: image)
+            analysis = try await ModelRouter.shared.analyze(rawText: rawText)
+        }
 
-        // Step 3: 持久化
+        let rawText = analysis.summary // 一步法没有 rawText，用 summary 代替
+
+        // 持久化
         let insight = Insight(
             summary: analysis.summary,
             rawText: rawText,

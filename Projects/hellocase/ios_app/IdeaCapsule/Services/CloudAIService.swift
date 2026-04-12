@@ -10,10 +10,13 @@ import Foundation
 actor CloudAIService {
     static let shared = CloudAIService()
 
-    // 智谱 API 配置（用户可以在 App 设置里修改）
+    // 智谱 API 配置
     private var apiKey: String = ""
     private let baseURL = "https://open.bigmodel.cn/api/paas/v4/chat/completions"
-    private let model = "glm-4-plus"
+
+    // 双模型分工（2026 最新最强）
+    private let textModel = "glm-5.1"                         // 文本分析 + 聚类 + 调研
+    private let visionModel = "glm-4.1v-thinking-flashx"      // 截图视觉理解（链式推理）
 
     private init() {}
 
@@ -70,7 +73,72 @@ actor CloudAIService {
         return try parseClusterResult(json)
     }
 
-    // MARK: - 底层 API 调用
+    // MARK: - 截图视觉分析（一步法：GLM-4.1V-Thinking）
+    //
+    // 之前：Vision OCR → 拿文字 → 发给文本模型 = 2 次调用
+    // 现在：直接把图片发给 GLM-4.1V-Thinking = 1 次调用
+    // GLM-4.1V-Thinking 会"思考"图片内容，同时完成 OCR + 理解 + 分析
+
+    func analyzeImage(imageData: Data) async throws -> CloudInsightResult {
+        guard !apiKey.isEmpty else { throw CloudAIError.noAPIKey }
+
+        let base64 = imageData.base64EncodedString()
+
+        let prompt = """
+        请深度分析这张截图。不仅仅是 OCR 文字，更要理解截图想表达什么。
+        比如：穿搭截图 → 分析色彩搭配逻辑；会议截图 → 提炼核心结论；产品截图 → 发现设计亮点。
+
+        返回严格的 JSON，不要 markdown 包裹：
+        {
+          "summary": "30-50 字总结截图的核心内容和价值",
+          "category": "社媒灵感/会议记录/产品想法/学习笔记/生活待办/聊天截图/其他",
+          "tags": ["3-5 个分类标签"],
+          "keywords": ["3-5 个具体关键词"],
+          "insight": "50 字延伸思考或行动建议（基于你对图片的深度理解）"
+        }
+        用中文。
+        """
+
+        var request = URLRequest(url: URL(string: baseURL)!)
+        request.httpMethod = "POST"
+        request.setValue("Bearer \(apiKey)", forHTTPHeaderField: "Authorization")
+        request.setValue("application/json", forHTTPHeaderField: "Content-Type")
+        request.timeoutInterval = 60  // 视觉模型可能慢一些
+
+        let body: [String: Any] = [
+            "model": visionModel,
+            "max_tokens": 1200,
+            "messages": [[
+                "role": "user",
+                "content": [
+                    ["type": "text", "text": prompt],
+                    ["type": "image_url", "image_url": ["url": "data:image/jpeg;base64,\(base64)"]]
+                ]
+            ]]
+        ]
+        request.httpBody = try JSONSerialization.data(withJSONObject: body)
+
+        let (data, response) = try await URLSession.shared.data(for: request)
+
+        guard let httpResponse = response as? HTTPURLResponse,
+              (200...299).contains(httpResponse.statusCode) else {
+            let statusCode = (response as? HTTPURLResponse)?.statusCode ?? -1
+            throw CloudAIError.apiError(statusCode: statusCode,
+                                         body: String(data: data, encoding: .utf8) ?? "")
+        }
+
+        guard let json = try JSONSerialization.jsonObject(with: data) as? [String: Any],
+              let choices = json["choices"] as? [[String: Any]],
+              let firstChoice = choices.first,
+              let message = firstChoice["message"] as? [String: Any],
+              let content = message["content"] as? String else {
+            throw CloudAIError.invalidResponse
+        }
+
+        return try parseInsightResult(content)
+    }
+
+    // MARK: - 底层 API 调用（文本）
 
     private func callAPI(prompt: String, maxTokens: Int) async throws -> String {
         guard !apiKey.isEmpty else {
@@ -84,7 +152,7 @@ actor CloudAIService {
         request.timeoutInterval = 30
 
         let body: [String: Any] = [
-            "model": model,
+            "model": textModel,
             "max_tokens": maxTokens,
             "temperature": 0.3,
             "messages": [
