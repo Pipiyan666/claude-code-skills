@@ -1,4 +1,6 @@
 import SwiftUI
+import Speech
+import AVFoundation
 import PhotosUI
 import SwiftData
 
@@ -266,28 +268,28 @@ struct CaptureView: View {
 
     private var voiceInputCard: some View {
         VStack(spacing: Theme.Spacing.md) {
-            ZStack {
-                Circle()
-                    .fill(viewModel.isRecording ? Theme.Colors.coral : Theme.Colors.coral.opacity(0.12))
-                    .frame(width: 88, height: 88)
-                    .scaleEffect(viewModel.isRecording ? 1.15 : 1.0)
-                    .animation(.easeInOut(duration: 0.6).repeatForever(autoreverses: true), value: viewModel.isRecording)
-                Circle()
-                    .fill(Theme.Colors.coral)
-                    .frame(width: 64, height: 64)
-                Image(systemName: viewModel.isRecording ? "waveform" : "mic.fill")
-                    .font(.system(size: 24, weight: .medium))
-                    .foregroundStyle(Theme.Colors.cream)
-            }
-            .onLongPressGesture(minimumDuration: 0.3, pressing: { pressing in
-                if pressing {
-                    viewModel.startRecording()
-                } else {
+            Button {
+                if viewModel.isRecording {
                     viewModel.stopRecording()
+                } else {
+                    viewModel.startRecording()
                 }
-            }, perform: {})
+            } label: {
+                ZStack {
+                    Circle()
+                        .fill(viewModel.isRecording ? Theme.Colors.coral : Theme.Colors.coral.opacity(0.12))
+                        .frame(width: 88, height: 88)
+                    Circle()
+                        .fill(viewModel.isRecording ? Theme.Colors.ink : Theme.Colors.coral)
+                        .frame(width: 64, height: 64)
+                    Image(systemName: viewModel.isRecording ? "stop.fill" : "mic.fill")
+                        .font(.system(size: 22, weight: .medium))
+                        .foregroundStyle(Theme.Colors.cream)
+                }
+            }
+            .buttonStyle(.plain)
 
-            Text(viewModel.isRecording ? "松开结束" : "长按说话")
+            Text(viewModel.isRecording ? "点击停止" : "点击开始说话")
                 .font(Theme.Typography.subheading)
                 .foregroundStyle(Theme.Colors.ink)
 
@@ -299,10 +301,12 @@ struct CaptureView: View {
                     .frame(maxWidth: .infinity, alignment: .leading)
                     .background(Theme.Colors.ivory)
                     .clipShape(RoundedRectangle(cornerRadius: 8))
-            } else {
-                Text("100% 本地识别 · 语音不离开手机")
+            }
+
+            if let err = viewModel.voiceError {
+                Text(err)
                     .font(Theme.Typography.caption)
-                    .foregroundStyle(Theme.Colors.inkSoft)
+                    .foregroundStyle(Theme.Colors.coral)
             }
         }
         .frame(maxWidth: .infinity, minHeight: 180)
@@ -310,7 +314,6 @@ struct CaptureView: View {
         .background(Theme.Colors.paper)
         .clipShape(RoundedRectangle(cornerRadius: Theme.Radius.card))
     }
-
     private var linkInputCard: some View {
         VStack(alignment: .leading, spacing: Theme.Spacing.md) {
             TextField("", text: $viewModel.linkInput, prompt:
@@ -497,6 +500,9 @@ final class CaptureViewModel {
 
     var isRecording: Bool = false
     var voiceText: String = ""
+    var voiceError: String? = nil
+    private var audioEngine: AVAudioEngine?
+    private var recognitionTask: SFSpeechRecognitionTask?
 
     var canSubmit: Bool {
         switch mode {
@@ -508,14 +514,64 @@ final class CaptureViewModel {
     }
 
     @MainActor func startRecording() {
-        isRecording = true
+        voiceError = nil
         voiceText = ""
+        SFSpeechRecognizer.requestAuthorization { status in
+            Task { @MainActor in
+                if status == .authorized {
+                    self.doStartRecording()
+                } else {
+                    self.voiceError = "请在设置里允许语音识别权限"
+                }
+            }
+        }
     }
 
-    func stopRecording() {
+    @MainActor private func doStartRecording() {
+        guard let recognizer = SFSpeechRecognizer(locale: Locale(identifier: "zh-CN")),
+              recognizer.isAvailable else {
+            voiceError = "语音识别不可用"
+            return
+        }
+        let request = SFSpeechAudioBufferRecognitionRequest()
+        request.shouldReportPartialResults = true
+        if recognizer.supportsOnDeviceRecognition {
+            request.requiresOnDeviceRecognition = true
+        }
+        let engine = AVAudioEngine()
+        let node = engine.inputNode
+        let fmt = node.outputFormat(forBus: 0)
+        node.installTap(onBus: 0, bufferSize: 1024, format: fmt) { buf, _ in
+            request.append(buf)
+        }
+        do {
+            try AVAudioSession.sharedInstance().setCategory(.record, mode: .measurement)
+            try AVAudioSession.sharedInstance().setActive(true)
+            engine.prepare()
+            try engine.start()
+        } catch {
+            voiceError = "麦克风启动失败"
+            return
+        }
+        self.audioEngine = engine
+        self.isRecording = true
+        recognitionTask = recognizer.recognitionTask(with: request) { result, err in
+            Task { @MainActor [weak self] in
+                guard let self else { return }
+                if let result { self.voiceText = result.bestTranscription.formattedString }
+                if err != nil || (result?.isFinal ?? false) { self.stopRecording() }
+            }
+        }
+    }
+
+    @MainActor func stopRecording() {
+        audioEngine?.stop()
+        audioEngine?.inputNode.removeTap(onBus: 0)
+        recognitionTask?.cancel()
+        audioEngine = nil
+        recognitionTask = nil
         isRecording = false
     }
-
     @MainActor
     func processInput(store: CapsuleStore) async {
         switch mode {
