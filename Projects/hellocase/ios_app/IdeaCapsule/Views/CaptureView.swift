@@ -383,30 +383,57 @@ private struct ModePill: View {
 
 private struct ProcessingIndicator: View {
     @State private var isAnimating = false
+    @State private var elapsed: Int = 0
+    let timer = Timer.publish(every: 1, on: .main, in: .common).autoconnect()
+
+    var statusText: String {
+        if elapsed < 3 { return "AI 正在看图..." }
+        if elapsed < 8 { return "正在深度理解（约 10 秒）..." }
+        if elapsed < 15 { return "K2.5 在思考中... \(elapsed)s" }
+        return "网络较慢，请稍等... \(elapsed)s"
+    }
 
     var body: some View {
-        HStack(spacing: Theme.Spacing.sm) {
-            HStack(spacing: 6) {
-                ForEach(0..<3) { idx in
-                    Circle()
-                        .fill(Theme.Colors.coral)
-                        .frame(width: 6, height: 6)
-                        .scaleEffect(isAnimating ? 1.2 : 0.6)
-                        .animation(
-                            .easeInOut(duration: 0.6)
-                                .repeatForever()
-                                .delay(Double(idx) * 0.15),
-                            value: isAnimating
-                        )
+        VStack(spacing: Theme.Spacing.sm) {
+            HStack(spacing: Theme.Spacing.sm) {
+                HStack(spacing: 6) {
+                    ForEach(0..<3) { idx in
+                        Circle()
+                            .fill(Theme.Colors.coral)
+                            .frame(width: 6, height: 6)
+                            .scaleEffect(isAnimating ? 1.2 : 0.6)
+                            .animation(
+                                .easeInOut(duration: 0.6)
+                                    .repeatForever()
+                                    .delay(Double(idx) * 0.15),
+                                value: isAnimating
+                            )
+                    }
                 }
+
+                Text(statusText)
+                    .font(Theme.Typography.bodyEmphasis)
+                    .foregroundStyle(Theme.Colors.inkSoft)
+                    .contentTransition(.numericText())
             }
 
-            Text("正在细读...")
-                .font(Theme.Typography.bodyEmphasis)
-                .foregroundStyle(Theme.Colors.inkSoft)
+            // 进度条
+            GeometryReader { geo in
+                RoundedRectangle(cornerRadius: 2)
+                    .fill(Theme.Colors.ivory)
+                    .frame(height: 3)
+                    .overlay(alignment: .leading) {
+                        RoundedRectangle(cornerRadius: 2)
+                            .fill(Theme.Colors.coral)
+                            .frame(width: min(geo.size.width, geo.size.width * CGFloat(elapsed) / 15.0), height: 3)
+                            .animation(.linear(duration: 1), value: elapsed)
+                    }
+            }
+            .frame(height: 3)
         }
         .frame(maxWidth: .infinity, alignment: .leading)
         .onAppear { isAnimating = true }
+        .onReceive(timer) { _ in elapsed += 1 }
     }
 }
 

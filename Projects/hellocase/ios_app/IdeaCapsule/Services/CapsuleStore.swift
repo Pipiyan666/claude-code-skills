@@ -32,40 +32,17 @@ final class CapsuleStore {
     ///   2. AnalyzeAgent: Apple FoundationModels 结构化分析
     ///   3. SaveAgent: 写入 SwiftData
     func processImage(_ image: UIImage, asset: PHAsset? = nil) async throws -> Insight {
-        // 一步法：直接把图片发给 GLM-4.1V-Thinking 视觉模型
-        // 它会同时完成 OCR + 理解图片含义 + 生成结构化分析
-        // 不再需要先 Vision OCR 再文本分析的两步法
-        guard let imageData = image.jpegData(compressionQuality: 0.8) else {
+        // 一步法：直接发图给 Kimi K2.5（跳过 Vision OCR，避免 actor hang）
+        // K2.5 同时完成 OCR + 理解 + 结构化分析
+        guard let imageData = image.jpegData(compressionQuality: 0.7) else {
             throw NSError(domain: "CapsuleStore", code: -1,
                           userInfo: [NSLocalizedDescriptionKey: "图片转换失败"])
         }
 
-        // 智能选择：付费模型用一步法，免费模型用两步法
-        let analysis: AnalysisResult
-        let rawText: String
-
-        let vModel = await CloudAIService.shared.visionModel
-        print("[CapsuleStore] 处理图片，视觉模型: \(vModel)")
-        let isPremium = vModel.contains("thinking")
-        if isPremium {
-            // 一步法（GLM-4.1V-Thinking 链式推理）
-            do {
-                analysis = try await ModelRouter.shared.analyzeImage(imageData: imageData)
-                rawText = analysis.summary
-            } catch {
-                // 降级到两步法
-                rawText = try await OCRService.shared.extractText(from: image)
-                analysis = try await ModelRouter.shared.analyze(rawText: rawText)
-            }
-        } else {
-            // 两步法（免费模型：Vision OCR → 文本分析）
-            print("[CapsuleStore] Step 1: Vision OCR ...")
-            rawText = try await OCRService.shared.extractText(from: image)
-            print("[CapsuleStore] Step 1 完成，OCR 文字: \(rawText.prefix(100))")
-            print("[CapsuleStore] Step 2: 文本分析 ...")
-            analysis = try await ModelRouter.shared.analyze(rawText: rawText)
-            print("[CapsuleStore] Step 2 完成: \(analysis.summary.prefix(50))")
-        }
+        print("[CapsuleStore] 一步法：发图给 K2.5 ...")
+        let analysis = try await ModelRouter.shared.analyzeImage(imageData: imageData)
+        let rawText = analysis.summary
+        print("[CapsuleStore] 完成: \(rawText.prefix(50))")
 
         // 持久化
         let insight = Insight(
