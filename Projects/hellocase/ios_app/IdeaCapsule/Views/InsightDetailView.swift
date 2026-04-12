@@ -1,112 +1,197 @@
 import SwiftUI
 
-// MARK: - InsightDetailView — 灵感详情页
+// MARK: - InsightDetailView — 灵感详情页（杂志文章风格）
+//
+// 设计哲学：像杂志里的一篇 feature article。
+//   - 顶部装饰：小 caption + 大 serif 斜体标题 + 分类
+//   - 中间：原文（serif）+ AI 洞察（引用框）
+//   - 底部：标签、关键词、元信息
 
 struct InsightDetailView: View {
     @Environment(CapsuleStore.self) private var store
+    @Environment(\.dismiss) private var dismiss
     let insight: Insight
 
     var body: some View {
-        ScrollView {
-            VStack(alignment: .leading, spacing: 24) {
-                // Header
-                VStack(alignment: .leading, spacing: 12) {
-                    Text(insight.summary)
-                        .font(.title2.bold())
+        ScrollView(showsIndicators: false) {
+            VStack(alignment: .leading, spacing: Theme.Spacing.xl) {
+                articleHeader
+                articleBody
+                insightQuote
+                metaFooter
 
-                    HStack {
-                        Text(insight.category)
-                            .font(.caption)
-                            .padding(.horizontal, 10)
-                            .padding(.vertical, 4)
-                            .background(.tint.opacity(0.2))
-                            .clipShape(.capsule)
+                Spacer().frame(height: 60)
+            }
+            .padding(.horizontal, Theme.Spacing.lg)
+            .padding(.top, Theme.Spacing.md)
+        }
+        .background(PaperBackground())
+        .navigationBarTitleDisplayMode(.inline)
+        .toolbar {
+            ToolbarItem(placement: .topBarLeading) {
+                Button {
+                    dismiss()
+                } label: {
+                    HStack(spacing: 4) {
+                        Image(systemName: "chevron.left")
+                            .font(.system(size: 13, weight: .semibold))
+                        Text("书库")
+                            .font(.system(size: 15, weight: .medium, design: .serif).italic())
+                    }
+                    .foregroundStyle(Theme.Colors.ink)
+                }
+            }
+            ToolbarItem(placement: .topBarTrailing) {
+                Menu {
+                    Button {
+                        let md = store.exportMarkdown(insight)
+                        UIPasteboard.general.string = md
+                    } label: {
+                        Label("复制为 Markdown", systemImage: "doc.on.clipboard")
+                    }
+                } label: {
+                    Image(systemName: "ellipsis")
+                        .foregroundStyle(Theme.Colors.ink)
+                }
+            }
+        }
+    }
 
-                        Spacer()
+    // MARK: - 文章 Header
 
-                        Text(insight.createdAt, style: .date)
-                            .font(.caption)
-                            .foregroundStyle(.secondary)
+    private var articleHeader: some View {
+        VStack(alignment: .leading, spacing: Theme.Spacing.md) {
+            // 小标签
+            HStack(spacing: Theme.Spacing.sm) {
+                Text(insight.category.uppercased())
+                    .font(.system(size: 10, weight: .bold, design: .rounded))
+                    .tracking(2)
+                    .padding(.horizontal, 10)
+                    .padding(.vertical, 4)
+                    .background(Theme.Colors.coral)
+                    .foregroundStyle(Theme.Colors.cream)
+                    .clipShape(RoundedRectangle(cornerRadius: 3))
+
+                Text(insight.createdAt, format: .dateTime.year().month(.wide).day())
+                    .font(Theme.Typography.caption)
+                    .foregroundStyle(Theme.Colors.inkSoft)
+            }
+
+            // 主标题（大 serif 斜体）
+            Text(insight.summary)
+                .font(.system(size: 32, weight: .regular, design: .serif))
+                .italic()
+                .foregroundStyle(Theme.Colors.ink)
+                .fixedSize(horizontal: false, vertical: true)
+
+            // 装饰线
+            HStack {
+                Rectangle()
+                    .fill(Theme.Colors.ink)
+                    .frame(width: 40, height: 2)
+                Spacer()
+            }
+        }
+    }
+
+    // MARK: - 正文
+
+    private var articleBody: some View {
+        VStack(alignment: .leading, spacing: Theme.Spacing.sm) {
+            Text("ORIGINAL")
+                .font(.system(size: 9, weight: .bold, design: .rounded))
+                .tracking(2)
+                .foregroundStyle(Theme.Colors.inkMuted)
+
+            Text(insight.rawText)
+                .font(.system(size: 16, weight: .regular, design: .serif))
+                .foregroundStyle(Theme.Colors.ink)
+                .lineSpacing(6)
+                .fixedSize(horizontal: false, vertical: true)
+        }
+    }
+
+    // MARK: - AI 洞察引用块
+
+    private var insightQuote: some View {
+        Group {
+            if !insight.aiInsight.isEmpty {
+                VStack(alignment: .leading, spacing: Theme.Spacing.sm) {
+                    HStack(spacing: Theme.Spacing.xs) {
+                        Rectangle().fill(Theme.Colors.coral).frame(width: 16, height: 1)
+                        Text("INSIGHT")
+                            .font(.system(size: 9, weight: .bold, design: .rounded))
+                            .tracking(2)
+                            .foregroundStyle(Theme.Colors.coral)
+                    }
+
+                    ZStack(alignment: .topLeading) {
+                        Text(""")
+                            .font(.system(size: 80, weight: .regular, design: .serif))
+                            .foregroundStyle(Theme.Colors.coral.opacity(0.25))
+                            .offset(x: -12, y: -20)
+
+                        Text(insight.aiInsight)
+                            .font(.system(size: 17, weight: .regular, design: .serif))
+                            .italic()
+                            .foregroundStyle(Theme.Colors.ink)
+                            .lineSpacing(6)
+                            .padding(.leading, Theme.Spacing.md)
+                            .padding(.top, Theme.Spacing.xs)
                     }
                 }
-                .padding()
-                .glassEffect(.regular, in: .rect(cornerRadius: 20))
+                .padding(Theme.Spacing.lg)
+                .background(Theme.Colors.ivory)
+                .overlay(
+                    Rectangle()
+                        .fill(Theme.Colors.coral)
+                        .frame(width: 3),
+                    alignment: .leading
+                )
+                .clipShape(RoundedRectangle(cornerRadius: Theme.Radius.card))
+            }
+        }
+    }
 
-                // 标签
-                if !insight.tags.isEmpty {
-                    SectionHeader(title: "🏷️ 标签")
-                    GlassEffectContainer(spacing: 6) {
-                        FlowLayout(spacing: 8) {
-                            ForEach(insight.tags, id: \.self) { tag in
-                                Text(tag)
-                                    .font(.caption)
-                                    .padding(.horizontal, 10)
-                                    .padding(.vertical, 4)
-                                    .glassEffect(.regular.tint(.blue.opacity(0.2)),
-                                                 in: .capsule)
-                            }
+    // MARK: - Meta Footer (标签 + 关键词)
+
+    private var metaFooter: some View {
+        VStack(alignment: .leading, spacing: Theme.Spacing.md) {
+            EditorialDivider()
+
+            if !insight.tags.isEmpty {
+                VStack(alignment: .leading, spacing: Theme.Spacing.xs) {
+                    Text("TAGS")
+                        .font(.system(size: 9, weight: .bold, design: .rounded))
+                        .tracking(2)
+                        .foregroundStyle(Theme.Colors.inkMuted)
+                    FlowLayout(spacing: 6) {
+                        ForEach(insight.tags, id: \.self) { tag in
+                            Text(tag)
+                                .editorialTag()
                         }
                     }
                 }
+            }
 
-                // 关键词
-                if !insight.keywords.isEmpty {
-                    SectionHeader(title: "🔑 关键词")
+            if !insight.keywords.isEmpty {
+                VStack(alignment: .leading, spacing: Theme.Spacing.xs) {
+                    Text("KEYWORDS")
+                        .font(.system(size: 9, weight: .bold, design: .rounded))
+                        .tracking(2)
+                        .foregroundStyle(Theme.Colors.inkMuted)
                     Text(insight.keywords.joined(separator: " · "))
-                        .font(.callout)
-                        .padding()
-                        .frame(maxWidth: .infinity, alignment: .leading)
-                        .glassEffect(.regular, in: .rect(cornerRadius: 12))
-                }
-
-                // AI 洞察
-                SectionHeader(title: "💡 AI 洞察")
-                Text(insight.aiInsight)
-                    .padding()
-                    .frame(maxWidth: .infinity, alignment: .leading)
-                    .glassEffect(.regular.tint(.yellow.opacity(0.2)),
-                                 in: .rect(cornerRadius: 16))
-
-                // 原文
-                SectionHeader(title: "📄 原文")
-                Text(insight.rawText)
-                    .font(.callout)
-                    .padding()
-                    .frame(maxWidth: .infinity, alignment: .leading)
-                    .glassEffect(.regular, in: .rect(cornerRadius: 12))
-            }
-            .padding()
-        }
-        .navigationTitle("灵感详情")
-        .navigationBarTitleDisplayMode(.inline)
-        .toolbar {
-            ToolbarItem(placement: .topBarTrailing) {
-                Menu {
-                    Button("导出为 Markdown", systemImage: "square.and.arrow.up") {
-                        let md = store.exportMarkdown(insight)
-                        UIPasteboard.general.string = md
-                    }
-                    Button("删除", systemImage: "trash", role: .destructive) {
-                        // TODO: 实现删除
-                    }
-                } label: {
-                    Image(systemName: "ellipsis.circle")
+                        .font(Theme.Typography.bodyEmphasis)
+                        .foregroundStyle(Theme.Colors.inkSoft)
                 }
             }
         }
     }
 }
 
-private struct SectionHeader: View {
-    let title: String
-    var body: some View {
-        Text(title)
-            .font(.headline)
-            .padding(.horizontal, 4)
-    }
-}
 
-// 简易 FlowLayout（标签自动换行）
+// MARK: - FlowLayout (自动换行的标签容器)
+
 struct FlowLayout: Layout {
     var spacing: CGFloat = 8
 
@@ -138,11 +223,10 @@ struct FlowLayout: Layout {
         var x: CGFloat = bounds.minX
         var y: CGFloat = bounds.minY
         var lineHeight: CGFloat = 0
-        let maxX = bounds.maxX
 
         for subview in subviews {
             let size = subview.sizeThatFits(.unspecified)
-            if x + size.width > maxX {
+            if x + size.width > bounds.maxX {
                 x = bounds.minX
                 y += lineHeight + spacing
                 lineHeight = 0

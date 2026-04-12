@@ -2,162 +2,329 @@ import SwiftUI
 import PhotosUI
 import SwiftData
 
-// MARK: - CaptureView — 灵感捕获页（核心入口）
+// MARK: - CaptureView — 灵感捕获页（Editorial Diary 风格）
 //
-// 三种输入方式：
-//   📷 从相册选截图（PhotosPicker）
-//   📝 手打文字（TextEditor）
-//   🔗 粘贴社媒链接（剪贴板检测）
+// 设计哲学：像翻开一本空白日记本的第一页。
+//   - 顶部 hero：大 serif 斜体标题 + 小小的装饰性 label
+//   - 中间 scroll 区：三种输入方式用"卡片化"的方式呈现，每张卡片都有自己的编辑语气
+//   - 底部：主 CTA 按钮是墨蓝底奶油字，大气克制
 //
-// UI 用 iOS 26 Liquid Glass 设计：
-//   - 大按钮带 .glassEffect(.regular.tint(...).interactive())
-//   - GlassEffectContainer 包裹相关元素
-//   - .buttonStyle(.glassProminent) 主按钮
+// 避免：
+//   ❌ 生硬的 Picker + TextEditor 堆砌
+//   ❌ 彩色渐变按钮
+//   ❌ 圆润到有点幼稚的设计
 
 struct CaptureView: View {
     @Environment(CapsuleStore.self) private var store
     @State private var viewModel = CaptureViewModel()
     @State private var selectedItem: PhotosPickerItem?
-    @Namespace private var glassNamespace
 
     var body: some View {
-        NavigationStack {
-            ScrollView {
-                VStack(spacing: 24) {
-                    headerSection
+        ScrollView(showsIndicators: false) {
+            VStack(alignment: .leading, spacing: Theme.Spacing.xl) {
+                heroSection
+                modeSelector
+                inputArea
+                actionButton
 
-                    GlassEffectContainer(spacing: 16) {
-                        VStack(spacing: 16) {
-                            inputModeSelector
-                            inputArea
-                            actionButton
-                        }
-                    }
+                if viewModel.isProcessing {
+                    ProcessingIndicator()
+                        .transition(.opacity.combined(with: .offset(y: 10)))
+                }
 
-                    if viewModel.isProcessing {
-                        ProgressView("AI 正在分析…")
-                            .padding()
-                    }
+                if let result = viewModel.lastResult {
+                    ResultCard(insight: result)
+                        .transition(.asymmetric(
+                            insertion: .opacity.combined(with: .offset(y: 30)),
+                            removal: .opacity
+                        ))
+                }
 
-                    if let result = viewModel.lastResult {
-                        ResultCard(insight: result)
-                            .transition(.scale.combined(with: .opacity))
+                Spacer().frame(height: 120) // tab bar 留白
+            }
+            .padding(.horizontal, Theme.Spacing.lg)
+            .padding(.top, Theme.Spacing.xl)
+        }
+        .onChange(of: selectedItem) { _, item in
+            Task { await viewModel.processPickedImage(item: item, store: store) }
+        }
+    }
+
+    // MARK: - Hero 区
+
+    private var heroSection: some View {
+        VStack(alignment: .leading, spacing: Theme.Spacing.sm) {
+            HStack(spacing: Theme.Spacing.sm) {
+                Rectangle()
+                    .fill(Theme.Colors.coral)
+                    .frame(width: 32, height: 2)
+                Text("INKLINGS · NO. \(Date.now.dayOfYear)")
+                    .font(.system(size: 10, weight: .medium, design: .rounded))
+                    .tracking(2)
+                    .foregroundStyle(Theme.Colors.coral)
+            }
+
+            Text("今天，有什么\n让你停下的？")
+                .font(Theme.Typography.hero)
+                .foregroundStyle(Theme.Colors.ink)
+                .fixedSize(horizontal: false, vertical: true)
+
+            Text("不删截图，让截图为你工作。")
+                .font(Theme.Typography.bodyEmphasis)
+                .foregroundStyle(Theme.Colors.inkSoft)
+        }
+        .frame(maxWidth: .infinity, alignment: .leading)
+    }
+
+    // MARK: - Mode 选择器（Editorial 风格）
+
+    private var modeSelector: some View {
+        HStack(spacing: Theme.Spacing.xs) {
+            ForEach(CaptureMode.allCases, id: \.self) { mode in
+                ModePill(
+                    mode: mode,
+                    isSelected: viewModel.mode == mode
+                ) {
+                    withAnimation(Theme.Motion.emphasized) {
+                        viewModel.mode = mode
                     }
                 }
-                .padding()
-            }
-            .navigationTitle("捕获灵感")
-            .background(
-                LinearGradient(
-                    colors: [.pink.opacity(0.1), .purple.opacity(0.1), .blue.opacity(0.1)],
-                    startPoint: .topLeading,
-                    endPoint: .bottomTrailing
-                )
-            )
-            .onChange(of: selectedItem) { _, item in
-                Task { await viewModel.processPickedImage(item: item, store: store) }
             }
         }
     }
 
-    // MARK: - 子视图
-
-    private var headerSection: some View {
-        VStack(spacing: 8) {
-            Text("✨ 灵感胶囊")
-                .font(.largeTitle.bold())
-            Text("不删截图，让截图为你工作")
-                .font(.subheadline)
-                .foregroundStyle(.secondary)
-        }
-        .frame(maxWidth: .infinity)
-        .padding(.top)
-    }
-
-    private var inputModeSelector: some View {
-        Picker("", selection: $viewModel.mode) {
-            Label("截图", systemImage: "camera").tag(CaptureMode.image)
-            Label("文字", systemImage: "text.alignleft").tag(CaptureMode.text)
-            Label("链接", systemImage: "link").tag(CaptureMode.link)
-        }
-        .pickerStyle(.segmented)
-        .padding(.horizontal)
-    }
+    // MARK: - 输入区
 
     @ViewBuilder
     private var inputArea: some View {
         switch viewModel.mode {
         case .image:
-            PhotosPicker(selection: $selectedItem, matching: .images) {
-                VStack(spacing: 12) {
-                    Image(systemName: "photo.on.rectangle.angled")
-                        .font(.system(size: 48))
-                        .foregroundStyle(.tint)
-                    Text("从相册选择截图")
-                        .font(.headline)
-                    Text("点这里 → 选一张小红书/抖音截图")
-                        .font(.caption)
-                        .foregroundStyle(.secondary)
-                }
-                .frame(maxWidth: .infinity, minHeight: 160)
-                .padding()
-                .glassEffect(.regular.tint(.pink.opacity(0.2)).interactive(),
-                             in: .rect(cornerRadius: 20))
-            }
-
+            imageInputCard
         case .text:
-            TextEditor(text: $viewModel.textInput)
-                .frame(minHeight: 160)
-                .padding(8)
-                .glassEffect(.regular.tint(.blue.opacity(0.1)),
-                             in: .rect(cornerRadius: 16))
-                .overlay(alignment: .topLeading) {
-                    if viewModel.textInput.isEmpty {
-                        Text("粘贴小红书笔记 / 写下你的想法…")
-                            .foregroundStyle(.secondary)
-                            .padding(16)
-                            .allowsHitTesting(false)
-                    }
-                }
-
+            textInputCard
+        case .voice:
+            voiceInputCard
         case .link:
-            VStack(spacing: 12) {
-                TextField("https://www.xiaohongshu.com/...", text: $viewModel.linkInput)
-                    .textFieldStyle(.roundedBorder)
-                    .padding()
-                    .glassEffect(.regular.tint(.purple.opacity(0.1)),
-                                 in: .rect(cornerRadius: 16))
-
-                Button {
-                    viewModel.pasteFromClipboard()
-                } label: {
-                    Label("从剪贴板粘贴", systemImage: "doc.on.clipboard")
-                }
-                .buttonStyle(.glass)
-            }
+            linkInputCard
         }
     }
+
+    private var imageInputCard: some View {
+        PhotosPicker(selection: $selectedItem, matching: .images) {
+            VStack(spacing: Theme.Spacing.md) {
+                Image(systemName: "photo.stack")
+                    .font(.system(size: 40, weight: .light))
+                    .foregroundStyle(Theme.Colors.coral)
+                Text("从相册选择截图")
+                    .font(Theme.Typography.subheading)
+                    .foregroundStyle(Theme.Colors.ink)
+                Text("小红书 · 会议 · PPT · 待办")
+                    .font(Theme.Typography.caption)
+                    .foregroundStyle(Theme.Colors.inkSoft)
+            }
+            .frame(maxWidth: .infinity, minHeight: 180)
+            .editorialCard()
+        }
+    }
+
+    private var textInputCard: some View {
+        ZStack(alignment: .topLeading) {
+            TextEditor(text: $viewModel.textInput)
+                .font(Theme.Typography.body)
+                .foregroundStyle(Theme.Colors.ink)
+                .scrollContentBackground(.hidden)
+                .frame(minHeight: 180)
+                .padding(Theme.Spacing.md)
+
+            if viewModel.textInput.isEmpty {
+                Text(""写下闪过脑海的那一刻...")
+                    .font(Theme.Typography.bodyEmphasis)
+                    .foregroundStyle(Theme.Colors.inkMuted)
+                    .padding(.top, Theme.Spacing.md + 8)
+                    .padding(.leading, Theme.Spacing.md + 5)
+                    .allowsHitTesting(false)
+            }
+        }
+        .background(Theme.Colors.paper)
+        .overlay(
+            RoundedRectangle(cornerRadius: Theme.Radius.card)
+                .stroke(Theme.Colors.hairline, lineWidth: 1)
+        )
+        .clipShape(RoundedRectangle(cornerRadius: Theme.Radius.card))
+        .modifier(Theme.Shadows.card())
+    }
+
+    private var voiceInputCard: some View {
+        VStack(spacing: Theme.Spacing.md) {
+            ZStack {
+                Circle()
+                    .fill(Theme.Colors.coral.opacity(0.12))
+                    .frame(width: 88, height: 88)
+                Circle()
+                    .fill(Theme.Colors.coral)
+                    .frame(width: 64, height: 64)
+                Image(systemName: "waveform")
+                    .font(.system(size: 24, weight: .medium))
+                    .foregroundStyle(Theme.Colors.cream)
+            }
+            Text("按住说话")
+                .font(Theme.Typography.subheading)
+                .foregroundStyle(Theme.Colors.ink)
+            Text("100% 本地识别 · 语音不离开手机")
+                .font(Theme.Typography.caption)
+                .foregroundStyle(Theme.Colors.inkSoft)
+        }
+        .frame(maxWidth: .infinity, minHeight: 180)
+        .editorialCard()
+    }
+
+    private var linkInputCard: some View {
+        VStack(alignment: .leading, spacing: Theme.Spacing.md) {
+            TextField("", text: $viewModel.linkInput, prompt:
+                Text("粘贴小红书 / 抖音链接")
+                    .font(Theme.Typography.bodyEmphasis)
+                    .foregroundStyle(Theme.Colors.inkMuted)
+            )
+            .font(Theme.Typography.body)
+            .textContentType(.URL)
+            .autocorrectionDisabled()
+            .textInputAutocapitalization(.never)
+
+            Divider()
+                .foregroundStyle(Theme.Colors.hairline)
+
+            Button {
+                viewModel.pasteFromClipboard()
+            } label: {
+                HStack(spacing: 6) {
+                    Image(systemName: "doc.on.clipboard")
+                        .font(.system(size: 12))
+                    Text("从剪贴板粘贴")
+                }
+            }
+            .editorialButtonSecondary()
+        }
+        .padding(Theme.Spacing.lg)
+        .background(Theme.Colors.paper)
+        .overlay(
+            RoundedRectangle(cornerRadius: Theme.Radius.card)
+                .stroke(Theme.Colors.hairline, lineWidth: 1)
+        )
+        .clipShape(RoundedRectangle(cornerRadius: Theme.Radius.card))
+        .modifier(Theme.Shadows.card())
+    }
+
+    // MARK: - CTA 按钮
 
     private var actionButton: some View {
         Button {
             Task { await viewModel.processInput(store: store) }
         } label: {
-            Label("✨ AI 分析", systemImage: "wand.and.stars")
-                .font(.headline)
-                .frame(maxWidth: .infinity)
-                .padding(.vertical, 4)
+            HStack(spacing: 8) {
+                Image(systemName: "sparkle")
+                    .font(.system(size: 14, weight: .semibold))
+                Text("让 AI 慢慢读")
+                Spacer()
+                Image(systemName: "arrow.right")
+                    .font(.system(size: 13, weight: .semibold))
+            }
+            .editorialButton()
         }
-        .buttonStyle(.glassProminent)
-        .disabled(viewModel.canSubmit == false || viewModel.isProcessing)
+        .disabled(!viewModel.canSubmit || viewModel.isProcessing)
+        .opacity(viewModel.canSubmit && !viewModel.isProcessing ? 1 : 0.4)
+    }
+}
+
+
+// MARK: - Mode Pill
+
+private struct ModePill: View {
+    let mode: CaptureMode
+    let isSelected: Bool
+    let action: () -> Void
+
+    var body: some View {
+        Button(action: action) {
+            VStack(spacing: 4) {
+                Image(systemName: mode.icon)
+                    .font(.system(size: 14, weight: .medium))
+                Text(mode.label)
+                    .font(.system(size: 11, weight: .medium, design: .serif).italic())
+            }
+            .foregroundStyle(isSelected ? Theme.Colors.cream : Theme.Colors.ink)
+            .padding(.vertical, 12)
+            .padding(.horizontal, 16)
+            .frame(maxWidth: .infinity)
+            .background(
+                RoundedRectangle(cornerRadius: 12)
+                    .fill(isSelected ? Theme.Colors.ink : Theme.Colors.paper)
+            )
+            .overlay(
+                RoundedRectangle(cornerRadius: 12)
+                    .stroke(Theme.Colors.hairline, lineWidth: 1)
+            )
+        }
+        .buttonStyle(.plain)
+    }
+}
+
+
+// MARK: - Processing 指示器
+
+private struct ProcessingIndicator: View {
+    @State private var isAnimating = false
+
+    var body: some View {
+        HStack(spacing: Theme.Spacing.sm) {
+            HStack(spacing: 6) {
+                ForEach(0..<3) { idx in
+                    Circle()
+                        .fill(Theme.Colors.coral)
+                        .frame(width: 6, height: 6)
+                        .scaleEffect(isAnimating ? 1.2 : 0.6)
+                        .animation(
+                            .easeInOut(duration: 0.6)
+                                .repeatForever()
+                                .delay(Double(idx) * 0.15),
+                            value: isAnimating
+                        )
+                }
+            }
+
+            Text("正在细读...")
+                .font(Theme.Typography.bodyEmphasis)
+                .foregroundStyle(Theme.Colors.inkSoft)
+        }
+        .frame(maxWidth: .infinity, alignment: .leading)
+        .onAppear { isAnimating = true }
     }
 }
 
 
 // MARK: - ViewModel
 
-enum CaptureMode {
-    case image, text, link
+enum CaptureMode: String, CaseIterable {
+    case image, text, voice, link
+
+    var label: String {
+        switch self {
+        case .image: "截图"
+        case .text:  "文字"
+        case .voice: "语音"
+        case .link:  "链接"
+        }
+    }
+
+    var icon: String {
+        switch self {
+        case .image: "photo.on.rectangle"
+        case .text:  "square.and.pencil"
+        case .voice: "waveform"
+        case .link:  "link"
+        }
+    }
 }
+
 
 @Observable
 final class CaptureViewModel {
@@ -170,9 +337,10 @@ final class CaptureViewModel {
 
     var canSubmit: Bool {
         switch mode {
-        case .image: return false  // 由 PhotosPicker 触发
-        case .text: return !textInput.trimmingCharacters(in: .whitespaces).isEmpty
-        case .link: return !linkInput.trimmingCharacters(in: .whitespaces).isEmpty
+        case .image: return false
+        case .text:  return !textInput.trimmingCharacters(in: .whitespaces).isEmpty
+        case .voice: return false
+        case .link:  return !linkInput.trimmingCharacters(in: .whitespaces).isEmpty
         }
     }
 
@@ -183,7 +351,6 @@ final class CaptureViewModel {
             await runProcessing { try await store.processText(self.textInput) }
             textInput = ""
         case .link where !linkInput.isEmpty:
-            // V1.1: fetch URL → AIService.extractFromLink
             errorMessage = "链接解析将在 V1.1 上线"
         default:
             break
@@ -195,24 +362,31 @@ final class CaptureViewModel {
         guard let item,
               let data = try? await item.loadTransferable(type: Data.self),
               let image = UIImage(data: data) else { return }
-
         await runProcessing { try await store.processImage(image) }
     }
 
     func pasteFromClipboard() {
-        if let str = UIPasteboard.general.string {
-            linkInput = str
-        }
+        if let str = UIPasteboard.general.string { linkInput = str }
     }
 
     @MainActor
     private func runProcessing(_ action: () async throws -> Insight) async {
-        isProcessing = true
-        defer { isProcessing = false }
+        withAnimation(Theme.Motion.emphasized) { isProcessing = true }
+        defer { withAnimation(Theme.Motion.emphasized) { isProcessing = false } }
         do {
-            lastResult = try await action()
+            let result = try await action()
+            withAnimation(Theme.Motion.dramatic) { lastResult = result }
         } catch {
             errorMessage = error.localizedDescription
         }
+    }
+}
+
+
+// MARK: - Date extension (day of year, 用于 hero 的 "INKLINGS · NO. xxx")
+
+extension Date {
+    var dayOfYear: Int {
+        Calendar.current.ordinality(of: .day, in: .year, for: self) ?? 0
     }
 }

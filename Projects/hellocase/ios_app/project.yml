@@ -1,0 +1,89 @@
+# xcodegen 配置文件 — 一键生成 IdeaCapsule.xcodeproj
+#
+# 用法（装好 xcodegen 后）：
+#   brew install xcodegen
+#   cd ios_app
+#   xcodegen generate
+#   open IdeaCapsule.xcodeproj
+#
+# 这样你就不用手动在 Xcode 里 File → New Project → 拖文件了。
+
+name: IdeaCapsule
+options:
+  bundleIdPrefix: com.ideacapsule
+  deploymentTarget:
+    iOS: "26.0"      # FoundationModels 需要 iOS 26+
+  createIntermediateGroups: true
+  generateEmptyDirectories: true
+
+settings:
+  base:
+    SWIFT_VERSION: "6.2"
+    DEVELOPMENT_LANGUAGE: zh-Hans
+    CODE_SIGN_STYLE: Automatic
+    GENERATE_INFOPLIST_FILE: NO
+    SWIFT_STRICT_CONCURRENCY: complete
+    ENABLE_USER_SCRIPT_SANDBOXING: YES
+
+targets:
+  IdeaCapsule:
+    type: application
+    platform: iOS
+    sources:
+      - path: IdeaCapsule
+        excludes:
+          - "ShareExtension"   # Share Extension 是单独 target
+          - "Resources/Info.plist"
+    resources:
+      - IdeaCapsule/Resources
+    info:
+      path: IdeaCapsule/Resources/Info.plist
+      properties:
+        CFBundleDisplayName: 灵感胶囊
+        CFBundleShortVersionString: 1.0.0
+        CFBundleVersion: 1
+        LSRequiresIPhoneOS: true
+        UILaunchScreen:
+          UIColorName: ""
+        UIApplicationSceneManifest:
+          UIApplicationSupportsMultipleScenes: true
+        UIRequiredDeviceCapabilities:
+          - arm64
+        UISupportedInterfaceOrientations:
+          - UIInterfaceOrientationPortrait
+        NSPhotoLibraryUsageDescription: "灵感胶囊需要读取你的相册，自动识别截图并用本地 AI 提取知识。所有数据 100% 在你的 iPhone 上处理，绝不上传云端。"
+        NSCameraUsageDescription: "灵感胶囊需要相机权限，让你直接拍照保存灵感。"
+        NSMicrophoneUsageDescription: "灵感胶囊需要麦克风权限，支持语音输入灵感。"
+        NSSpeechRecognitionUsageDescription: "灵感胶囊需要语音识别权限，用本地 Speech Framework 把语音转成文字。所有处理在设备上完成。"
+    entitlements:
+      path: IdeaCapsule.entitlements
+      properties:
+        com.apple.security.app-sandbox: true
+        com.apple.security.files.user-selected.read-only: true
+        com.apple.security.application-groups:
+          - group.com.ideacapsule.shared
+    dependencies: []
+    settings:
+      base:
+        PRODUCT_BUNDLE_IDENTIFIER: com.ideacapsule.app
+        TARGETED_DEVICE_FAMILY: "1,2"    # iPhone + iPad
+        CURRENT_PROJECT_VERSION: 1
+        MARKETING_VERSION: 1.0.0
+        ASSETCATALOG_COMPILER_APPICON_NAME: AppIcon
+        DEVELOPMENT_TEAM: ""              # 用户需要在 Xcode 里填自己的 Apple Developer Team
+
+schemes:
+  IdeaCapsule:
+    build:
+      targets:
+        IdeaCapsule: all
+    run:
+      config: Debug
+    test:
+      config: Debug
+    profile:
+      config: Release
+    analyze:
+      config: Debug
+    archive:
+      config: Release
