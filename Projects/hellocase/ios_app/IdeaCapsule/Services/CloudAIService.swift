@@ -83,51 +83,55 @@ actor CloudAIService {
         guard !apiKey.isEmpty else { throw CloudAIError.noAPIKey }
 
         let base64 = imageData.base64EncodedString()
+        print("[CloudAI] 视觉分析开始，模型: \(visionModel)，图片大小: \(imageData.count / 1024)KB")
 
-        let prompt = """
-        请深度分析这张截图。不仅仅是 OCR 文字，更要理解截图想表达什么。
-        比如：穿搭截图 → 分析色彩搭配逻辑；会议截图 → 提炼核心结论；产品截图 → 发现设计亮点。
-
-        返回严格的 JSON，不要 markdown 包裹：
-        {
-          "summary": "30-50 字总结截图的核心内容和价值",
-          "category": "社媒灵感/会议记录/产品想法/学习笔记/生活待办/聊天截图/其他",
-          "tags": ["3-5 个分类标签"],
-          "keywords": ["3-5 个具体关键词"],
-          "insight": "50 字延伸思考或行动建议（基于你对图片的深度理解）"
+        // 用 Codable 构建 JSON（彻底避免 JSONSerialization + NSNumber crash）
+        struct VisionRequest: Encodable {
+            let model: String
+            let max_tokens: Int
+            let messages: [VisionMessage]
         }
-        用中文。
-        """
+        struct VisionMessage: Encodable {
+            let role: String
+            let content: [VisionContent]
+        }
+        struct VisionContent: Encodable {
+            let type: String
+            let text: String?
+            let image_url: ImageURL?
+            struct ImageURL: Encodable { let url: String }
+        }
+
+        let visionReq = VisionRequest(
+            model: visionModel,
+            max_tokens: 800,
+            messages: [VisionMessage(
+                role: "user",
+                content: [
+                    VisionContent(type: "text", text: "请分析这张截图，返回JSON：{\"summary\":\"30字总结\",\"category\":\"社媒灵感/会议记录/产品想法/学习笔记/其他\",\"tags\":[\"标签\"],\"keywords\":[\"关键词\"],\"insight\":\"行动建议\"}。用中文，不要markdown包裹。", image_url: nil),
+                    VisionContent(type: "image_url", text: nil, image_url: .init(url: "data:image/jpeg;base64,\(base64)"))
+                ]
+            )]
+        )
 
         var request = URLRequest(url: URL(string: baseURL)!)
         request.httpMethod = "POST"
         request.setValue("Bearer \(apiKey)", forHTTPHeaderField: "Authorization")
         request.setValue("application/json", forHTTPHeaderField: "Content-Type")
-        request.timeoutInterval = 15
-        print("[CloudAI] 视觉分析，模型: \(visionModel)")
+        request.timeoutInterval = 30  // K2.5 视觉推理需要 10-15 秒
 
-        // 视觉请求必须用 JSONSerialization（content 是混合类型数组），但移除 temperature
-        let maxTok = visionModel.contains("flash") && !visionModel.contains("thinking") ? 300 : 1200
-        let body: [String: Any] = [
-            "model": visionModel,
-            "max_tokens": NSNumber(value: maxTok),
-            "messages": [[
-                "role": "user",
-                "content": [
-                    ["type": "text", "text": prompt] as [String: String],
-                    ["type": "image_url", "image_url": ["url": "data:image/jpeg;base64,\(base64)"]] as [String: Any]
-                ] as [[String: Any]]
-            ] as [String: Any]]
-        ]
-        request.httpBody = try JSONSerialization.data(withJSONObject: body)
+        request.httpBody = try JSONEncoder().encode(visionReq)
+        print("[CloudAI] 请求已发送，等待响应...")
 
         let (data, response) = try await URLSession.shared.data(for: request)
 
-        guard let httpResponse = response as? HTTPURLResponse,
-              (200...299).contains(httpResponse.statusCode) else {
-            let statusCode = (response as? HTTPURLResponse)?.statusCode ?? -1
-            throw CloudAIError.apiError(statusCode: statusCode,
-                                         body: String(data: data, encoding: .utf8) ?? "")
+        let statusCode = (response as? HTTPURLResponse)?.statusCode ?? -1
+        print("[CloudAI] 视觉响应: HTTP \(statusCode)")
+
+        guard (200...299).contains(statusCode) else {
+            let body = String(data: data, encoding: .utf8) ?? ""
+            print("[CloudAI] ❌ 视觉错误: \(body.prefix(200))")
+            throw CloudAIError.apiError(statusCode: statusCode, body: body)
         }
 
         guard let json = try JSONSerialization.jsonObject(with: data) as? [String: Any],
@@ -135,9 +139,11 @@ actor CloudAIService {
               let firstChoice = choices.first,
               let message = firstChoice["message"] as? [String: Any],
               let content = message["content"] as? String else {
+            print("[CloudAI] ❌ 响应解析失败")
             throw CloudAIError.invalidResponse
         }
 
+        print("[CloudAI] ✅ 视觉分析完成: \(content.prefix(80))")
         return try parseInsightResult(content)
     }
 
