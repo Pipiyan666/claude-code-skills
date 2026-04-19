@@ -1,4 +1,5 @@
 import SwiftUI
+import SwiftData
 
 // MARK: - SettingsView — 设置页面
 //
@@ -240,7 +241,10 @@ struct SettingsView: View {
 
     private func clearAllData() {
         do {
-            try modelContext.delete(modelContext.fetchAll(insights))
+            let allInsights = try modelContext.fetch(FetchDescriptor<Insight>())
+            for insight in allInsights {
+                modelContext.delete(insight)
+            }
             try modelContext.save()
         } catch {
             print("[Settings] 清除失败: \(error)")

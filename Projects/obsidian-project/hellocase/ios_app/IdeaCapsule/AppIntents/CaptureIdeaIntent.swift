@@ -25,12 +25,9 @@ struct CaptureIdeaIntent: AppIntent {
     )
     var text: String
 
-    func perform() async throws -> some IntentResult & ProvidesDialog & ReturnsValue<String> {
+    func perform() async throws -> some IntentResult & ProvidesDialog {
         guard !text.isEmpty else {
-            return .result(
-                value: "",
-                dialog: "请输入要保存的内容"
-            )
+            return .result(dialog: "请输入要保存的内容")
         }
 
         do {
@@ -38,12 +35,10 @@ struct CaptureIdeaIntent: AppIntent {
             let insight = try await store.processText(text)
 
             return .result(
-                value: insight.id.uuidString,
                 dialog: "✅ 已保存：\(insight.summary)"
             )
         } catch {
             return .result(
-                value: "",
                 dialog: "❌ 保存失败：\(error.localizedDescription)"
             )
         }
@@ -218,8 +213,8 @@ struct ProcessImageIntent: AppIntent {
         var summaries: [String] = []
 
         for file in images {
-            guard let imageData = file.data,
-                  let image = UIImage(data: imageData) else {
+            let imageData = file.data
+            guard let image = UIImage(data: imageData) else {
                 failCount += 1
                 continue
             }
@@ -292,7 +287,6 @@ struct IdeaCapsuleShortcuts: AppShortcutsProvider {
                 "用 \(.applicationName) 处理截图",
                 "\(.applicationName) 分析截图",
                 "把截图保存到 \(.applicationName)",
-                "截图存胶囊",
             ],
             shortTitle: "处理截图",
             systemImageName: "photo.badge.plus"
@@ -316,7 +310,6 @@ struct IdeaCapsuleShortcuts: AppShortcutsProvider {
             phrases: [
                 "\(.applicationName) 从剪贴板捕获",
                 "保存剪贴板到 \(.applicationName)",
-                "剪贴板内容存胶囊",
             ],
             shortTitle: "剪贴板捕获",
             systemImageName: "doc.on.clipboard"
@@ -324,6 +317,6 @@ struct IdeaCapsuleShortcuts: AppShortcutsProvider {
     }
 
     static var shortcutTileColor: ShortcutTileColor {
-        .coral
+        .orange
     }
 }
